@@ -19,8 +19,8 @@ library(BayesFactor) # performs Bayesian ANOVA
 
 ```{r load data}
 
-# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
 myfiles = lapply(temp, read.csv) # read these CSV in the directory
 magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe

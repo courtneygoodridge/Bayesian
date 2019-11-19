@@ -63,8 +63,8 @@ This plots the whole HDI and the ROPE interval which visualises the proportion o
 ```{r load my data}
 # rm(list = ls())
 
-# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
 myfiles = lapply(temp, read.csv) # read these CSV in the directory
 magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
@@ -234,12 +234,15 @@ The shape parameter is a dispersion parameter for the gamma distribution. Might 
 posteriors <- insight::get_parameters(fit_glm)
 
 ggplot(data = posteriors) +
+  geom_vline(xintercept = mean(posteriors$heading1), color = "red") +
+  geom_vline(xintercept = mean(posteriors$heading2), color = "orange") +
+  geom_vline(xintercept = mean(posteriors$heading3), color = "yellow") +
   geom_density(aes(x = heading1), fill = "red", alpha = 0.3) +
   geom_density(aes(x = heading2), fill = "orange", alpha = 0.3) +
   geom_density(aes(x = heading3), fill = "yellow", alpha = 0.3) +
   geom_vline(xintercept = -.02, color = "black", size = 2) +
   geom_vline(xintercept = .02, color = "black", size = 2) +
-  xlim(-.20, .20)
+  xlim(-.15, .15)
   
 
 ```
@@ -272,6 +275,7 @@ Mean and median from the posterior distribution show similar sizes of effects. M
 *TO DO*
 - see if I can facet_wrap of the posteroir distributions and their mean, median and MAP values
 - write up a draft results section based on this analysis and send to Callum
+- write up results for Bayesian ANOVA, and then for Bayesian GLM and then compare the model fits to see which one to use.
 
 ```{r estimation of uncertainty via 95% HDIs of the GLM model}
 
