@@ -120,7 +120,7 @@ summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata))
 
 # defining my own contrast matrix
 
-contrastmatrix <- cbind(c(1, -1, 0, 0), c(0, 1, -1, 0), c(0, 0, 1, -1))
+contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
 
 contrasts(magnitudedata$heading) <- contrastmatrix
 
@@ -149,9 +149,9 @@ This contrast option is not exactly what I want either. Thus I need to create my
 *contrastmatrix*
 If I am to compare this ANOVA technique versus the anovaBF function, I need 3 contrasts:
 
-- 0.5 vs 1.0
-- 1.0 vs 1.5
-- 1.5 vs 2.0
+- 0.5 vs 1.0 (heading1)
+- 1.0 vs 1.5 (heading2)
+- 1.5 vs 2.0 (heading3)
 
 These comparisons are not orthogonal, however they represent the research question that I am asking. I do this be providing 3 columns (one for each comparison) and indicating with 1's and -1's which factor levels should be contrasted with others. For my Bayesian ANOVA models, these are the contrasts I will use from now on. 
 
@@ -172,7 +172,7 @@ Red dots on the diagnostic plots would indicate divergence, we I do not have.
 
 # Bayesian ANOVA model
 pd_aov <- p_direction(fit_aov)
-percentage_in_rope_aov <- rope(fit_aov, ci = 1)
+percentage_in_rope_aov <- rope(fit_aov, ci = 1, range = c(-0.02, 0.02))
 
 # png(filename = "C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1/Data cleaning and modelling/Bayesian/HDI.png")
 
@@ -224,7 +224,7 @@ For my GLM model, I am specifying a family gamma distribution with identity link
 
 *Visualising ROPE interval*
 
-This shows that once all my heading values are inputted into the model, 0 of my most credible values are practically equivalent to the ROPE null interval. This plot does not visualise well due to the shape parameter being so large thus I plot using ggplot below. 
+This shows the effect size distributions of each of the contrasts. This plot does not visualise them well due to the shape parameter being so large thus I plot using ggplot below. 
 
 The shape parameter is a dispersion parameter for the gamma distribution. Might so large due to may large range of RTs.
 
@@ -235,8 +235,8 @@ posteriors <- insight::get_parameters(fit_glm)
 
 ggplot(data = posteriors) +
   geom_density(aes(x = heading1), fill = "red", alpha = 0.3) +
-  geom_density(aes(x = heading1.5), fill = "orange", alpha = 0.3) +
-  geom_density(aes(x = heading2), fill = "yellow", alpha = 0.3) +
+  geom_density(aes(x = heading2), fill = "orange", alpha = 0.3) +
+  geom_density(aes(x = heading3), fill = "yellow", alpha = 0.3) +
   geom_vline(xintercept = -.02, color = "black", size = 2) +
   geom_vline(xintercept = .02, color = "black", size = 2) +
   xlim(-.20, .20)
@@ -248,11 +248,9 @@ The following is taken from this example:
 
 https://easystats.github.io/bayestestR/articles/example1_GLM.html
 
-This plot represents the probability (y axis) of the different effects (x axis). Central values are more probable that those at the tail of the distribution. The different HDIs (heading1, heading2 and heading3) correspond to the different contrasts that are computed under the *contr.helmert* contrast option. 
+This plot represents the probability (y axis) of the different effects (x axis). Central values are more probable that those at the tail of the distribution. The different HDIs (heading1, heading2 and heading3) correspond to the different contrasts that I have implemented.
 
-Heading3 is closer to the ROPE interval because it is contrasting the average of the first three levels with the fourth level. Hence by averaging the first 3 levels, my outcome variable between this and the fourth level are more similar so the resultant effect will be reduced. 
-
-Black lines specify our ROPE interval for the GLM model and visualises that for the full model, none of the most credible values fall within the practically equivalent zone.
+In this example, the effect size parameters of 1.0 vs 0.5 and 1.5 vs 1.0 are larger than those of the 2.0 vs 1.5 contrast. Either way, they are still outside the ROPE interval and thus indicate that none of the most credible values for each contrast fall within the practically equivalent zone.
 
 ```{r describing the posterior distribution from the GLM model}
 
@@ -269,7 +267,11 @@ ggplot(posteriors, aes(x = heading1)) +
 
 ```
 
-Mean and median from the posterior distribution show similar sizes of effects. MAP refers to the modal value within the posterior distribution, also known as the *maximum a posteriori*. As we plot these on our posterior distribution, they all overlap which is a good sign hat our best guess is accurate. 
+Mean and median from the posterior distribution show similar sizes of effects. MAP refers to the modal value within the posterior distribution, also known as the *maximum a posteriori*. As we plot these on our posterior distribution. There is a slight differences between these values but overall they are fairly similar which is a good sign that our best guess is accurate.
+
+*TO DO*
+- see if I can facet_wrap of the posteroir distributions and their mean, median and MAP values
+- write up a draft results section based on this analysis and send to Callum
 
 ```{r estimation of uncertainty via 95% HDIs of the GLM model}
 
