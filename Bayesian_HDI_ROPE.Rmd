@@ -109,22 +109,27 @@ I have left the priors as a default meaning they are weakly informative
 nhttps://mc-stan.org/rstanarm/articles/continuous.html#gamma-regression-example
 
 ```{r understanding the different contrasts}
-options(contrasts = c("contr.treatment","contr.poly"))
 
-contrasts(magnitudedata$heading)
-
-summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata)) 
-
-options(contrasts = c("contr.helmert", "contr.poly"))
-
-contrasts(magnitudedata$heading)
+contrasts(magnitudedata$heading) <- "contr.treatment"
 
 summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata)) 
 
+contrasts(magnitudedata$heading) <- "contr.helmert"
+
+summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata))
+
+# defining my own contrast matrix
+
+contrastmatrix <- cbind(c(1, -1, 0, 0), c(0, 1, -1, 0), c(0, 0, 1, -1))
+
+contrasts(magnitudedata$heading) <- contrastmatrix
+
+summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata))
 
 ```
 
-*contr.treatment* is the default contrast setting. The row of zeros next to 0.5 indicates that R is specifying this as the "control condition". The 1's then indicate what the control condition is being contrasted against i.e. in this example:
+*contr.treatment* 
+Default contrast setting. The row of zeros next to 0.5 indicates that R is specifying this as the "control condition". The 1's then indicate what the control condition is being contrasted against i.e. in this example:
 
 - 0.5 vs 1.0 (heading1)
 - 0.5 vs 1.5 (heading1.5)
@@ -132,19 +137,23 @@ summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata))
 
 Hence these are orthogonal contrasts, whereby my comparisons are statistically independent from each other. By using the *summary.lm* function on a simple ANOVA, we can see the t-tests that are computed i.e. on each of my heading levels versus the 0.5 level.
 
-*contr.helmert* is the contrast setting I have been using for my Bayesian ANOVA models. This contrast setting compares the second level with the first level, compares the third level with the average of the first two and compares the fourth level with the average of the first three. Hence in this example, we would have contrasts such as:
+*contr.helmert* 
+The contrast setting I have been using for my Bayesian ANOVA models. This contrast setting compares the second level with the first level, compares the third level with the average of the first two and compares the fourth level with the average of the first three. Hence in this example, we would have contrasts such as:
 
 - 0.5 vs 1.0 (heading1)
 - 1.5 vs ((0.5 + 1.0) / 2) (heading2)
 - 2.0 vs ((0.5 + 1.0 + 1.5) / 2) (heading3)
 
-This *contr.helmert* contrast option is not exactly what I want either. If I am to compare this ANOVA technique versus the anovaBF function, I need 3 contrasts:
+This contrast option is not exactly what I want either. Thus I need to create my own contrast matrix.
+
+*contrastmatrix*
+If I am to compare this ANOVA technique versus the anovaBF function, I need 3 contrasts:
 
 - 0.5 vs 1.0
 - 1.0 vs 1.5
 - 1.5 vs 2.0
 
-These comparisons are not orthogonal, however they represent the research question that I am asking.
+These comparisons are not orthogonal, however they represent the research question that I am asking. I do this be providing 3 columns (one for each comparison) and indicating with 1's and -1's which factor levels should be contrasted with others. For my Bayesian ANOVA models, these are the contrasts I will use from now on. 
 
 
 ```{r checking model divergences}
@@ -226,8 +235,8 @@ posteriors <- insight::get_parameters(fit_glm)
 
 ggplot(data = posteriors) +
   geom_density(aes(x = heading1), fill = "red", alpha = 0.3) +
-  geom_density(aes(x = heading2), fill = "orange", alpha = 0.3) +
-  geom_density(aes(x = heading3), fill = "yellow", alpha = 0.3) +
+  geom_density(aes(x = heading1.5), fill = "orange", alpha = 0.3) +
+  geom_density(aes(x = heading2), fill = "yellow", alpha = 0.3) +
   geom_vline(xintercept = -.02, color = "black", size = 2) +
   geom_vline(xintercept = .02, color = "black", size = 2) +
   xlim(-.20, .20)
