@@ -83,22 +83,27 @@ magnitudedata <- magnitudedata %>%
 
 magnitudedata$heading <- as.factor(magnitudedata$heading)
 
+options(contrasts = c("contr.helmert", "contr.poly"))
+
 fit_aov <- stan_aov(FirstSteeringTime ~ heading, data = magnitudedata, prior = R2(location = 0.1), adapt_delta = 0.999, seed = 12345)
 fit_aov
-
-my_prior <- normal(location = c(-10, 0), scale = c(5, 2), autoscale = FALSE)
 
 fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), data = magnitudedata)
 fit_glm
 
 ```
+Firstly, I set the heading variable to a factor in order to perform the contrasts. I then set the contrast options as *contr.helmert* as an example.
 
-The *stan_aov* function performs Bayesian analysis of variance. Using this function allows you input priors based on the R2 values (the proportion of variance explained of your outcome variable by your predictors). Hence if I can compute the R2 from my ANOVA model from experiment 1, I can input this as a prior for analysis of experiment 2.
+*stan_aov* 
+Performs Bayesian analysis of variance. Using this function allows you input priors based on the R2 values (the proportion of variance explained of your outcome variable by your predictors). Hence if I can compute the R2 from my ANOVA model from experiment 1, I can input this as a prior for analysis of experiment 2.
 
+The R2 values represents how much variance in the dependent variable can be explained by the independent variable. The R2 of the *stan_aov* matches what would be achieved using a standard linear regression i.e. 10% of the variance can be explained by the heading predictors.
 
-The R2 values represents how much variance in the dependent variable can be explained by the independent variable. The R2 of the *stan_aov* matches what would be achieved using a standard linear regression.
+*stan_glm* 
+Computes a generalised linear model with a gamma dsitribution. A gamma distribution is a better fit for my data (rather than a gaussian) due to it being continous data, having a right skew and not encompassing zero (it is not possible to have negative RTs))
 
-The *stan_glm* function allows me to compute a generalised linear model with a gamma dsitribution. A gamma distribution is a better fit for my data (rather than a gaussian) due to it being continous data, having a right skew and not encompassing zero (it is not possible to have negative RTs))
+For both models, *mean_ppd* is a good heuristic. This value represents a best guess of the median for the posterior predicitive distribution (distribution of simiulated data based on current data. Should equal the mean(y) where y is the a vector of the outcome variable in your dataframe). In both cases, this value matches the mean of the outcome variable.
+
 
 I have left the priors as a default meaning they are weakly informative
 nhttps://mc-stan.org/rstanarm/articles/continuous.html#gamma-regression-example
@@ -183,8 +188,6 @@ Probability of Direction plots from the Bayesian ANOVA shows that heading has ne
 
 Plotting the ROPE interval shows us that 95% of the most credible values for the standardised effect size parameter are not practically equvialent to the null hypothesis value.
 
-The different HDIs (heading1, heading2 and heading3) correspond to the sequential nature of accumulating data and reconstructing my 95% HDIs. i.e. I start with one level of my predictor and I add another for each time and thus construct a new HDI.
-
 ```{r probability of direction and ROPE interval for Bayesian glm model}
 
 # Bayesian glm model
@@ -209,8 +212,6 @@ percentage_in_rope_glm
 According to Kruschke (2018) in his paper titled "Rejecting or Accepting Parameter Values in Bayesian Estimation", ROPE intervals for linear models should be defined at 0.1 (half of a small effect size) multiplied by the standard deviation of the y variable i.e. the outcome variable.
 
 For my GLM model, I am specifying a family gamma distribution with identity link function. Because the link function links the dependent variable to the linear term, this allows me to form a linear equation with it. Hence potentially I should still be able to use a ROPE interval of 0.1 * sd(y).
-
-**Ask Callum**
 
 *Visualising ROPE interval*
 
@@ -238,10 +239,11 @@ The following is taken from this example:
 
 https://easystats.github.io/bayestestR/articles/example1_GLM.html
 
-This plot represents the probability (y axis) of the different effects (x axis). Central values are more probable that those at the tail of the distribution. The different headings refer to the addition of all my heading values in a sequential manner within the Bayesian model. Heading1 is perhaps the model with all of the predictors in, as the effect is the largest.
+This plot represents the probability (y axis) of the different effects (x axis). Central values are more probable that those at the tail of the distribution. The different HDIs (heading1, heading2 and heading3) correspond to the different contrasts that are computed under the *contr.helmert* contrast option. 
+
+Heading3 is closer to the ROPE interval because it is contrasting the average of the first three levels with the fourth level. Hence by averaging the first 3 levels, my outcome variable between this and the fourth level are more similar so the resultant effect will be reduced. 
 
 Black lines specify our ROPE interval for the GLM model and visualises that for the full model, none of the most credible values fall within the practically equivalent zone.
-
 
 ```{r describing the posterior distribution from the GLM model}
 
