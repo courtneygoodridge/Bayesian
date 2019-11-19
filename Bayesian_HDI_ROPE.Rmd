@@ -1,0 +1,247 @@
+---
+title: "Bayesian HDI+ROPE"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages}
+library(dplyr) # data manipulation
+library(tidyr) # data manipulation
+library(ggplot2) # data vis
+library(BayesFactor) # performs Bayesian ANOVA
+library(rstanarm) # bayesian regression modelling
+library(bayestestR) # describes bayesian models and posterior distributions
+library(see) # unsure what this does
+library(bayesplot) # allows plots for posterior predictive distributions
+library(loo) # Bayesian model comparison
+library(arm) # computes Bayes factor for glm model
+library(insight) # get posterior parameters 
+```
+
+```{r load practice data and contruct the model}
+
+data(iris)
+
+model <- stan_glm(Sepal.Length ~ Species, data = iris)  # Fit model
+
+model
+
+```
+
+In this example, we use the stan_glm to compute a generalised linear model investigating how sepal length is affected by sepal width from the Iris dataset.
+
+```{r plotting probability of direction}
+
+pd <- p_direction(model)
+percentage_in_rope <- rope(model, ci = 1)
+
+# Visualise the pd
+plot(pd)
+
+pd
+
+```
+
+The *p_direction* function refers to the Probability of Direction (pd). The pd varies from 50% to 100% and refers to the probability that a parameter, as described by the posterior distribution, is positiive or negative. Mathenatically, this is calculated as the proportion of the posterior distribution that is the sign of the median value. 
+
+The *rope* function computes the ROPE'd interval from the model. *ci = 1* allows the calculation of the portion of the whole posterior distribution that is within the bounds of the ROPE interval. Desireable values are small values inside the ROPE as we can state that 95% of the most credible parameter values are not practically equivalent to the null value, thus we reject the null hypothesis model. 
+
+The Probability of Direction for Sepal.Width is 93.60%, meaning a 93.60% probability that Sepal.Width has a negative effect on Sepal.Length
+
+```{r visualising the ROPE interval}
+# Visualise the percentage in ROPE
+plot(percentage_in_rope)
+
+percentage_in_rope
+```
+
+This plots the whole HDI and the ROPE interval which visualises the proportion of the samples that are within the ROPE. Hence with these results, there is a 15.68% probability that the parameter value is practicially equivalent to the null value. This is likely to demonstrate a non-significant effect.
+
+```{r load my data}
+# rm(list = ls())
+
+# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
+myfiles = lapply(temp, read.csv) # read these CSV in the directory
+magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
+
+# example dataframe for stack overflow
+# dput(head(magnitudedata, n = 5))
+
+```
+
+Loading magnitude data
+
+```{r compute model for each heading}
+
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(heading > 0)
+
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+op <- options(contrasts = c("contr.helmert", "contr.poly"))
+
+fit_aov <- stan_aov(FirstSteeringTime ~ heading, data = magnitudedata, prior = R2(location = 0.1), adapt_delta = 0.999, seed = 12345)
+fit_aov
+
+my_prior <- normal(location = c(-10, 0), scale = c(5, 2), autoscale = FALSE)
+
+fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), data = magnitudedata)
+fit_glm
+
+```
+
+The *stan_aov* function performs Bayesian analysis of variance. Using this function allows you input priors based on the R2 values (the proportion of variance explained of your outcome variable by your predictors). Hence if I can compute the R2 from my ANOVA model from experiment 1, I can input this as a prior for analysis of experiment 2.
+
+
+The R2 values represents how much variance in the dependent variable can be explained by the independent variable. The R2 of the *stan_aov* matches what would be achieved using a standard linear regression.
+
+The *stan_glm* function allows me to compute a generalised linear model with a gamma dsitribution. A gamma distribution is a better fit for my data (rather than a gaussian) due to it being continous data, having a right skew and not encompassing zero (it is not possible to have negative RTs))
+
+I have left the priors as a default meaning they are weakly informative
+nhttps://mc-stan.org/rstanarm/articles/continuous.html#gamma-regression-example
+
+
+```{r checking model divergences}
+launch_shinystan(fit_aov)
+```
+
+The *launch_shinystan* function generates more information on how the model was fitted, with particular focus on divergences.
+
+Stan uses the Hamiltonian Monte Carlo (HMC) to investigate the posterior distribution by simulating the evolution of a Hamilton system. The step size that is chosen when simulating and this specifies the resolution at which you are simulating through the distribution. If the steps are too larger, you might miss somthing and thus estimates become biased. This is known as divergence.
+
+As an example, if you were climbing down a mountain, you could take big steps but would have a risk of falling. Conversely you could take small steps and walk down final. Divergence occurs when these steps get too large.
+
+Red dots on the diagnostic plots would indicate divergence, we I do not have.
+
+```{r probability of direction and ROPE interval for Bayesian ANOVA model}
+
+# Bayesian ANOVA model
+pd_aov <- p_direction(fit_aov)
+percentage_in_rope_aov <- rope(fit_aov, ci = 1)
+
+# png(filename = "C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1/Data cleaning and modelling/Bayesian/HDI.png")
+
+# Visualise the pd
+plot(pd_aov)
+
+# dev.off()
+pd_aov
+
+# Visualise the percentage in ROPE
+plot(percentage_in_rope_aov)
+
+percentage_in_rope_aov
+
+```
+
+*Probability of Direction* 
+
+Probability of Direction plots from the Bayesian ANOVA shows that heading has negative effect on RTs i.e. increasesed headings have faster reaction times (as we would expect).
+
+*Visualising the ROPE interval*
+
+Plotting the ROPE interval shows us that 95% of the most credible values for the standardised effect size parameter are not practically equvialent to the null hypothesis value.
+
+The different HDIs (heading1, heading2 and heading3) correspond to the sequential nature of accumulating data and reconstructing my 95% HDIs. i.e. I start with one level of my predictor and I add another for each time and thus construct a new HDI.
+
+```{r probability of direction and ROPE interval for Bayesian glm model}
+
+# Bayesian glm model
+pd_glm <- p_direction(fit_glm)
+percentage_in_rope_glm <- rope(fit_glm, ci = 1, range = c(-0.02, 0.02))
+
+# png(filename = "C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1/Data cleaning and modelling/Bayesian/HDI.png")
+
+# Visualise the pd
+plot(pd_glm)
+
+# dev.off()
+pd_glm
+
+# Visualise the percentage in ROPE
+plot(percentage_in_rope_glm)
+
+percentage_in_rope_glm
+
+```
+
+According to Kruschke (2018) in his paper titled "Rejecting or Accepting Parameter Values in Bayesian Estimation", ROPE intervals for linear models should be defined at 0.1 (half of a small effect size) multiplied by the standard deviation of the y variable i.e. the outcome variable.
+
+For my GLM model, I am specifying a family gamma distribution with identity link function. Because the link function links the dependent variable to the linear term, this allows me to form a linear equation with it. Hence potentially I should still be able to use a ROPE interval of 0.1 * sd(y).
+
+**Ask Callum**
+
+*Visualising ROPE interval*
+
+This shows that once all my heading values are inputted into the model, 0 of my most credible values are practically equivalent to the ROPE null interval. This plot does not visualise well due to the shape parameter being so large thus I plot using ggplot below. 
+
+The shape parameter is a dispersion parameter for the gamma distribution. Might so large due to may large range of RTs.
+
+
+```{r ROPE intervals and posteriors via ggplot}
+
+posteriors <- insight::get_parameters(fit_glm)
+
+ggplot(data = posteriors) +
+  geom_density(aes(x = heading1), fill = "red", alpha = 0.3) +
+  geom_density(aes(x = heading2), fill = "orange", alpha = 0.3) +
+  geom_density(aes(x = heading3), fill = "yellow", alpha = 0.3) +
+  geom_vline(xintercept = -.02, color = "black", size = 2) +
+  geom_vline(xintercept = .02, color = "black", size = 2) +
+  xlim(-.20, .20)
+  
+
+```
+
+The following is taken from this example:
+
+https://easystats.github.io/bayestestR/articles/example1_GLM.html
+
+This plot represents the probability (y axis) of the different effects (x axis). Central values are more probable that those at the tail of the distribution. The different headings refer to the addition of all my heading values in a sequential manner within the Bayesian model. Heading1 is perhaps the model with all of the predictors in, as the effect is the largest.
+
+Black lines specify our ROPE interval for the GLM model and visualises that for the full model, none of the most credible values fall within the practically equivalent zone.
+
+
+```{r describing the posterior distribution from the GLM model}
+
+mean(posteriors$heading1)
+median(posteriors$heading1)
+map_estimate(posteriors$heading1)
+
+ggplot(posteriors, aes(x = heading1)) +
+  geom_density(fill = "red") +
+  geom_vline(xintercept = mean(posteriors$heading1), color = "blue", size = 2) + # mean
+  geom_vline(xintercept = median(posteriors$heading1), color = "orange", size = 2) + # median
+  geom_vline(xintercept = map_estimate(posteriors$heading1), color = "purple", size = 2) # MAP
+
+
+```
+
+Mean and median from the posterior distribution show similar sizes of effects. MAP refers to the modal value within the posterior distribution, also known as the *maximum a posteriori*. As we plot these on our posterior distribution, they all overlap which is a good sign hat our best guess is accurate. 
+
+```{r estimation of uncertainty via 95% HDIs of the GLM model}
+
+range(posteriors$heading1)
+hdi(posteriors$heading1, ci = 0.95)
+
+```
+
+The 95% HDIs indicate tha the effect has a 95% chance of falling between 0.13 and 0.18.
+
+```{r ROPE interval - another way to caluclate it for GLM model}
+
+# define rope range for glm
+rope_value <- 0.1 * sd(magnitudedata$FirstSteeringTime)
+rope_range <- c(-rope_value, rope_value)
+
+rope(posteriors$heading1, range = rope_range, ci = 0.95)
+
+```
+
+Finally, we construct our ROPE interval. We find that our full model, none of the 95% credible value are practically equivalent to the null. Hence we can conclude that our effect is significant.
+

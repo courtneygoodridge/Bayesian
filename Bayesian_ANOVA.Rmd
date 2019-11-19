@@ -1,0 +1,123 @@
+---
+title: "Bayesian ANOVA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load packages}
+# rm(list = ls())
+
+library(dplyr) # data manipulation
+library(tidyr) # data manipulation
+library(ggplot2) # data vis
+library(BayesFactor) # performs Bayesian ANOVA
+
+```
+
+```{r load data}
+
+# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
+myfiles = lapply(temp, read.csv) # read these CSV in the directory
+magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
+
+```
+
+Load magnitude data
+
+```{r Bayesian ANOVA}
+
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(heading > 0)
+
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+bf <- anovaBF(FirstSteeringTime ~ heading, data = magnitudedata)
+bf
+
+```
+
+Using the anovaBF function tests the full hypothesis model versus the null model hypothesis. 
+
+Default prior is r = 0.5 (medium) but can be changed by including the *rscaleEffects = c( x = n ))* where *x* is the main effect and *n* is the prior width value arguement. This can be changed to wide (r = 0.707, Cauchy) or ultra wide (r = 1) for example. 
+
+The Bayes factor for the default prior width is 2.24 x 10^75, which proposes that the data is 2.24 x 10^75 times more likely according to the alternative model hypothesis versus null model hypothesis.
+
+This is good, but are we testing the "right" hypothesis? Richard Morley proposed that testing for differences between your factor levels refers to an unconstrained model however many researchers hypotheses actually relate to order constraints i.e.
+
+0.5 < 1.0 < 1.5 < 2.0
+
+The above is actually the alternative hypothesis I am proposing - that larger headings result in faster reaction times. Classical statistics usually ends with the rejection of the null that means are equal. However there is no real way to test for order restrictions - you can only point to the means of your factor levels and the direction of your predicitions. Doing this does not take into account the uncertainty of the estimation.
+
+Richard Morley also proposed that post hoc tests often have low power and are subtley left out when they fail and trumpeted when they suceed.
+
+Bayes factors however provide a viable alternative. This will allow us to compute 3 comparions:
+
+- The full model versus the null model (using the anovaBF function)
+- The full model versus the order restriction
+- The order restriction versus the null model
+
+The Bayes factor is the degree of change from prior to posterior odds. Hence if we can compute this, we can compute the Bayes factor. The prior odds have equal probability across factor levels. With 4 factors, the prior odds are 1/8 as there are 8 orderings.
+
+```{r sample from the posterior distribution}
+
+samples <-  posterior(bf, iterations = 10000)
+head(samples)
+
+```
+
+The posterior function allows us to sample from the posterior distribution a number of times.
+
+```{r plotting posterior distributions of the factor level effects}
+
+summary(samples[,2:5])
+
+plot(samples[,2:3])
+plot(samples[,4:5])
+
+
+```
+
+These plots illustrate posterior distribution draws for each of the heading condition.
+
+```{r form the order constraints}
+
+## Check order constraint
+consistent = (samples[, "heading-1.5"] > samples[, "heading-2"]) &
+  (samples[, "heading-1"] > samples[, "heading-1.5"]) &
+  (samples[, "heading-0.5"] > samples[, "heading-1"])
+N_consistent = sum(consistent)
+
+```
+
+We then construction the order constraints, whereby we expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1. The *consistent* variables checks that the order constraint is true and the *n_consistent* variable counts the number of consistent order constraints from the sampled posterior.  
+
+```{r restriction versus full model}
+
+bf_restriction_against_full = (N_consistent / 4000) / (1 / 8)
+bf_restriction_against_full
+
+```
+
+The posterior probability is the number of consistent order constraints from the posterior (*n_consistent*) divided by the number of samples (10000). Then we divide the posterior by the prior distribution probabilites to get the Bayes factor of the restriction model versus the full model.
+
+We generate a Bayes factor of 8. Hence the data is 8 times more likely under the restriction model than under the full model.
+
+```{r restriction versus the null model}
+
+## Convert bf1 to a number so that we can multiply it
+bf_full_against_null = as.vector(bf)
+
+## Use transitivity to compute desired Bayes factor
+bf_restriction_against_null = bf_restriction_against_full * bf_full_against_null
+bf_restriction_against_null
+
+```
+
+Finally, we can use the Bayes factor from the full model and multiple this by the Bayes factor of the restriction versus the full model to get the Bayes factor of the restriction model versus the null model. This generates a Bayes factor of 1.79 x 10^76, thus indicating the data is 1.79 x 10^76 more likely under the restriction model than under the null.
+
+This tells us that according to the Bayes factors, it is inconclusive whether the restriction is better than the full model however both models are better in comparison to the null. 
