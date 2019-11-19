@@ -114,16 +114,32 @@ options(contrasts = c("contr.helmert", "contr.poly"))
 
 contrasts(magnitudedata$heading)
 
+summary.lm(aov(FirstSteeringTime ~ heading, data = magnitudedata)) 
+
+
 ```
 
 *contr.treatment* is the default contrast setting. The row of zeros next to 0.5 indicates that R is specifying this as the "control condition". The 1's then indicate what the control condition is being contrasted against i.e. in this example:
 
-- 0.5 vs 1.0
-- 0.5 vs 1.5
-- 0.5 vs 2.0
+- 0.5 vs 1.0 (heading1)
+- 0.5 vs 1.5 (heading1.5)
+- 0.5 vs 2.0 (heading2.0)
 
 Hence these are orthogonal contrasts, whereby my comparisons are statistically independent from each other. By using the *summary.lm* function on a simple ANOVA, we can see the t-tests that are computed i.e. on each of my heading levels versus the 0.5 level.
 
+*contr.helmert* is the contrast setting I have been using for my Bayesian ANOVA models. This contrast setting compares the second level with the first level, compares the third level with the average of the first two and compares the fourth level with the average of the first three. Hence in this example, we would have contrasts such as:
+
+- 0.5 vs 1.0 (heading1)
+- 1.5 vs ((0.5 + 1.0) / 2) (heading2)
+- 2.0 vs ((0.5 + 1.0 + 1.5) / 2) (heading3)
+
+This *contr.helmert* contrast option is not exactly what I want either. If I am to compare this ANOVA technique versus the anovaBF function, I need 3 contrasts:
+
+- 0.5 vs 1.0
+- 1.0 vs 1.5
+- 1.5 vs 2.0
+
+These comparisons are not orthogonal, however they represent the research question that I am asking.
 
 
 ```{r checking model divergences}
