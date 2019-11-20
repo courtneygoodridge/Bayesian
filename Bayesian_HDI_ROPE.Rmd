@@ -100,7 +100,9 @@ Performs Bayesian analysis of variance. Using this function allows you input pri
 The R2 values represents how much variance in the dependent variable can be explained by the independent variable. The R2 of the *stan_aov* matches what would be achieved using a standard linear regression i.e. 10% of the variance can be explained by the heading predictors.
 
 *stan_glm* 
-Computes a generalised linear model with a gamma dsitribution. A gamma distribution is a better fit for my data (rather than a gaussian) due to it being continous data, having a right skew and not encompassing zero (it is not possible to have negative RTs))
+Computes a generalised linear model with a gamma dsitribution. A gamma distribution is a better fit for my data (rather than a gaussian) due to it being continous data, having a right skew and not encompassing zero (it is not possible to have negative RTs)). Hence applying this distribution is a better description for my error values as they are not normally distributed. 
+
+My prior could still be a cauchy distribution (*CHECK WHY THIS IS THE BEST DEFAULT*) but my prior median shouldn't be zero as I can't have zero or negative reaction times...
 
 For both models, *mean_ppd* is a good heuristic. This value represents a best guess of the median for the posterior predicitive distribution (distribution of simiulated data based on current data. Should equal the mean(y) where y is the a vector of the outcome variable in your dataframe). In both cases, this value matches the mean of the outcome variable.
 
@@ -222,7 +224,7 @@ According to Kruschke (2018) in his paper titled "Rejecting or Accepting Paramet
 
 For my GLM model, I am specifying a family gamma distribution with identity link function. Because the link function links the dependent variable to the linear term, this allows me to form a linear equation with it. Hence potentially I should still be able to use a ROPE interval of 0.1 * sd(y).
 
-According toR documentation (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/stan_aov) specifying the the family as a gamma dsitribution with identity link function estimates a linear model but with different priors i.e. priors with a gamma distribution. Hence my model still classifies as a linear model. 
+According toR documentation (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/stan_aov) specifying the family as a gamma dsitribution with identity link function estimates a linear model but with different priors.
 
 *Visualising ROPE interval*
 
