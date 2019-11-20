@@ -63,8 +63,8 @@ This plots the whole HDI and the ROPE interval which visualises the proportion o
 ```{r load my data}
 # rm(list = ls())
 
-setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
-# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
 myfiles = lapply(temp, read.csv) # read these CSV in the directory
 magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
@@ -85,10 +85,10 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 
 options(contrasts = c("contr.helmert", "contr.poly"))
 
-fit_aov <- stan_aov(FirstSteeringTime ~ heading, data = magnitudedata, prior = R2(location = 0.1), adapt_delta = 0.999, seed = 12345)
+fit_aov <- stan_aov(FirstSteeringTime ~ heading, data = magnitudedata, prior = NULL, adapt_delta = 0.999, seed = 12345)
 fit_aov
 
-fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), data = magnitudedata)
+fit_glm <- stan_glm(FirstSteeringTime ~ heading, prior = cauchy(), family = gaussian(), data = magnitudedata)
 fit_glm
 
 ```

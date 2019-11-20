@@ -1,0 +1,212 @@
+---
+title: "Bayesian analysis - draft write up"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This markdown document is my first attempt at writing up a Bayesian analysis of my data. The data I am using is from experiment 1. For this example, I will be investigating how heading angle affects RTs. For a reminder, both Threshold and Accumulator models propose reduced RTs as heading increases.
+
+## Load packages 
+
+```{r load packages, message =FALSE}
+library(dplyr) # data manipulation
+library(tidyr) # data manipulation
+library(ggplot2) # data vis
+library(BayesFactor) # performs Bayesian ANOVA
+library(rstanarm) # bayesian regression modelling
+library(bayestestR) # describes Bayesian models and posterior distributions
+library(bayesplot) # allows plots for posterior predictive distributions
+library(loo) # Bayesian model comparison
+library(arm) # computes Bayes factor for glm model
+library(insight) # get posterior parameters 
+```
+
+## Load data
+
+```{r load my data}
+# rm(list = ls()) - clear global environment
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv"))
+myfiles = lapply(temp, read.csv)
+magnitudedata <- do.call(rbind.data.frame, myfiles)
+```
+
+## Setting my contrasts
+
+```{r construct contrast matrix}
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(heading > 0)
+
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+# default contrasts - orthogonal
+contrasts(magnitudedata$heading)
+
+# setting my own contrasts - better addresses my research question
+contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
+
+contrasts(magnitudedata$heading) <- contrastmatrix
+
+contrasts(magnitudedata$heading)
+```
+
+The default contrasts assume that the 0.5 heading condiiton is my control and compare each of my other headings against this. These are my "orthogonal"" contrasts in that they are linearly and statistically independent (each vector cannot be defined via a linear combination of the other vectors). 
+
+However I did not feel that these were the best contrasts for my research question. I create a contrast matrix with 3 contrasts:
+
+- 1.0 vs 0.5
+- 1.5 vs 1.0
+- 2.0 vs 1.5
+
+These contrasts allow me to investigate whether RTs decrease as heading values increase. 
+
+## Fitting Bayesian regression model
+
+```{r fitting Bayesian GLM model, message = FALSE}
+fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = gaussian(), adapt_delta = 0.999, data = magnitudedata)
+```
+
+The stan_glm function requires a prior. I omitted the option of a prior and defaulted to the weakly informative ones. This is because 1) I do not have prior results on which to base my predictions and 2) the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors)
+
+I set adapt_delta arguement to *0.999* to reduce the stepsize during the model simulation. Stepsize specifies the resolution at which you are simulating through the posterior distribution. If the steps are too large, you might miss something and thus estimates become biased. This is known as divergence. The documentation proposes an adapt_delta arguement value such as this to reduce the chances of divergence (documentation divergence -> http://mc-stan.org/rstanarm/articles/aov.html)
+
+For my first model, I specify a gaussian family for the distributions of my errors. This is not the case for my data, but I want to see the difference. 
+
+## Summary of my Bayesian ANOVA model
+
+```{r summarising the model}
+summary(fit_glm)
+mean(magnitudedata$FirstSteeringTime)
+```
+My Rhat values suggest the model succesfully converged.
+
+*mean_ppd* in the estimates table can be used as a heuristic for how well the model describes the data. This value represents a best guess of the mean posterior predicitive distribution (distribution of simiulated data based on current data). Ideally this should be equal the mean of my outcome variable (RT). In this case, the values are quite similar.
+
+## ROPE intervals 
+
+```{r ROPE intervals and drawing from posterior distributions}
+posteriors <- insight::get_parameters(fit_glm)
+
+ggplot(data = posteriors) +
+  geom_vline(xintercept = median(posteriors$heading1), color = "red") +
+  geom_vline(xintercept = median(posteriors$heading2), color = "orange") +
+  geom_vline(xintercept = median(posteriors$heading3), color = "blue") +
+  geom_density(aes(x = heading1), fill = "red", alpha = 0.3) +
+  geom_density(aes(x = heading2), fill = "orange", alpha = 0.3) +
+  geom_density(aes(x = heading3), fill = "blue", alpha = 0.3) +
+  geom_vline(xintercept = -.02, color = "black", size = 2) +
+  geom_vline(xintercept = .02, color = "black", size = 2) +
+  xlim(-.15, .15) +
+  xlab("standardised effect size")
+
+# establishing the percentage of the HDIs within the ROPE interval
+percentage_in_rope_glm <- rope(fit_glm, ci = 1, range = c(-0.02, 0.02))
+
+percentage_in_rope_glm
+```
+
+ROPE stands for "region of practical equivalence". Comparing your alternative hypothesis to a single point null does not make much sense theoretically, as it is very likely difference (even if it is extremely small). Thus we can define a ROPE which is an interval around your point null that is "practically equivalent" to the null point. 
+
+Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0.1 (half of a small effect size) multiplied by the standard deviation of the outcome variable. Hence this is what is done here.
+
+I can then draw from the posterior distributions and plot the HDIs for each of my contrasts. This provides a nice interpretation, as I can literally say:
+
+"*95% of the the most credible value for standardised effect size are not practically equivalent to the null*". 
+
+## Posterior predictive distributions
+
+```{r posterior predictive distribution}
+# observedresponses
+y <- magnitudedata$FirstSteeringTime
+
+# sample draws from the posterior distribution
+yrep_aov <- posterior_predict(fit_glm, draws = 50)
+
+color_scheme_set("brightblue")
+ppc_dens_overlay(y, yrep_aov[1:50, ])
+```
+
+*Posterior distributions* explain unknown parameter (standardised effect size) and provides the 95% most credible values for that parameter. *Posterior predictive distributions* refer to a distribution of future predicted data based upon the data already seen. 
+
+If the model is a good fit, you should be able to simulate similar data that was generated during the experiment.
+
+My model demonstrates a reasonably good fit, however it under predicts the density of responses at 0.5 seconds. It also overestimates the peak of the responses (i.e. the highest density of responses) as slower than the observed peak responses.
+
+## Computing a Bayes factor
+
+```{r Bayes factor}
+
+bf_glm <- bayesfactor_parameters(fit_aov, null = c(-.02,.02))
+bf_glm
+
+```
+I can compute my Bayes factor for each contrast. This also allows me to compute my Bayes factor for the alternative hypothesis versus the ROPE interval null hypothesis, rather than a point null. This demonstrates substantial evidence for the alternative hypotheses.
+
+This is based upon the example given here (https://easystats.github.io/bayestestR/articles/bayes_factors.html#testing-models-parameters-with-bayes-factors)
+
+## Plotting regression line from Bayesian model
+
+```{r plotting regression line}
+draws <- as.data.frame(fit_glm)
+colnames(draws)[1:2] <- c("a", "b")
+
+ggplot(magnitudedata, aes(x = heading, y = FirstSteeringTime)) + 
+  geom_point(size = 1, position = position_jitter(height = 0.05, width = 0.1), alpha = 0.3) + 
+  geom_abline(data = draws, aes(intercept = a, slope = b), 
+              color = "skyblue", size = 0.2, alpha = 0.25) + 
+  geom_abline(intercept = coef(fit_glm)[1], slope = coef(fit_glm)[2], 
+                   color = "skyblue4", size = 1) 
+```
+
+Here I plot the regression line from the Bayesian model. To plot uncertainty, I plot the estimated regression line at each draw from the postrior distribution. 
+
+It is a poor fit to the data. This is likely due to me setting the family as *gaussian* when I know it should actually by *Gamma*.
+
+From the example (http://mc-stan.org/rstanarm/articles/continuous.html#linear-regression-example)
+
+## Bayesian model with gamma family
+
+```{r Bayesian model with gamma}
+fit_glm_gamma <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), adapt_delta = 0.999, data = magnitudedata)
+```
+
+## Re-plotting the regression line
+
+```{r re-plotting model with gamma family}
+draws_gamma <- as.data.frame(fit_glm_gamma)
+colnames(draws_gamma)[1:2] <- c("a", "b")
+
+ggplot(dplyr::filter(magnitudedata, heading <= 1), aes(x = heading, y = FirstSteeringTime)) + 
+  geom_point(size = 1, position = position_jitter(height = 0.05, width = 0.1), alpha = 0.3) + 
+  geom_abline(data = draws_gamma, aes(intercept = a, slope = b), 
+              color = "skyblue", size = 0.2, alpha = 0.25) + 
+  geom_abline(intercept = coef(fit_glm_gamma)[1], slope = coef(fit_glm_gamma)[2], 
+                   color = "skyblue4", size = 1) 
+```
+
+Thus we see that when I properly model the distribution errors, the fit of the model to the data is much better.
+
+## Model comparison using the loo package 
+
+```{r model comparison using the loo package}
+loo_aov <- loo(fit_aov)
+
+loo_glm <- loo(fit_glm)
+
+print(loo_compare(loo_aov, loo_glm), digits = 3)
+```
+
+**TO DO**
+- start analysis by looking at the distribution of the data. BECAUSE it's gamma, I the choose stan_glm to fit the data
+
+- then go through analysis and compute Bayes factor in the end - no point doing an ANOVA that assume normally distributed errors when I dont have them.
+
+- compare this to a stan_glm with gaussian family just to show that the fit of my data is better with a gamma distribution
+
+- remove regression line plots as they do not make sense with the contrasts i have
+- could plot regression lines for the contrasts I do have though i.e. just for headings 0.5 and 1 for example... 
+
+- send to Callum for commments 
