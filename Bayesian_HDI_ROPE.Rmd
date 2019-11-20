@@ -162,7 +162,7 @@ launch_shinystan(fit_aov)
 
 The *launch_shinystan* function generates more information on how the model was fitted, with particular focus on divergences.
 
-Stan uses the Hamiltonian Monte Carlo (HMC) to investigate the posterior distribution by simulating the evolution of a Hamilton system. The step size that is chosen when simulating and this specifies the resolution at which you are simulating through the distribution. If the steps are too larger, you might miss somthing and thus estimates become biased. This is known as divergence.
+Stan uses the Hamiltonian Monte Carlo (HMC) to investigate the posterior distribution by simulating the evolution of a Hamilton system. The step size that is chosen when simulating and this specifies the resolution at which you are simulating through the distribution. If the steps are too large, you might miss something and thus estimates become biased. This is known as divergence.
 
 As an example, if you were climbing down a mountain, you could take big steps but would have a risk of falling. Conversely you could take small steps and walk down final. Divergence occurs when these steps get too large.
 
@@ -221,6 +221,8 @@ percentage_in_rope_glm
 According to Kruschke (2018) in his paper titled "Rejecting or Accepting Parameter Values in Bayesian Estimation", ROPE intervals for linear models should be defined at 0.1 (half of a small effect size) multiplied by the standard deviation of the y variable i.e. the outcome variable.
 
 For my GLM model, I am specifying a family gamma distribution with identity link function. Because the link function links the dependent variable to the linear term, this allows me to form a linear equation with it. Hence potentially I should still be able to use a ROPE interval of 0.1 * sd(y).
+
+According toR documentation (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/stan_aov) specifying the the family as a gamma dsitribution with identity link function estimates a linear model but with different priors i.e. priors with a gamma distribution. Hence my model still classifies as a linear model. 
 
 *Visualising ROPE interval*
 
