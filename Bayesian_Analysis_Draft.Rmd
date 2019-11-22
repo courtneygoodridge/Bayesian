@@ -31,8 +31,8 @@ library(insight) # get posterior parameters
 ```{r load my data}
 # rm(list = ls()) - clear global environment
 # home working directory
-setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_Code/experiment_1")
-# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_Code/experiment_1")
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
@@ -47,26 +47,21 @@ magnitudedata <- magnitudedata %>%
 
 magnitudedata$heading <- as.factor(magnitudedata$heading)
 
-bf <- anovaBF(FirstSteeringTime ~ heading, data = magnitudedata, rscaleEffects = c(r = 0.707))
+bf <- anovaBF(FirstSteeringTime ~ heading, data = magnitudedata)
 bf
 
 ```
 
 Using the anovaBF function tests the full hypothesis model versus the null model hypothesis. In my example, this will be the main effect of heading. 
 
-*Might delete this*
-I set the prior as r = 0.707 which is equivalent to a Cauchy distribution. This a well known default distribution for priors. 
-*Might delete this*
+The computed Bayes factor is 2.24 x 10^75. This indicates that the current data is 2.24 x 10^75 times more likely under the alternative hypothesis versus the null hypothesis i.e. there is a main effect difference between the levels of my heading factor.
 
-The computed Bayes factor is 2.24 x 10^75. This indicates that the current data is 2.24 x 10^75 times more likely under the alternative hypothesis versus the null hypothesis i.e. there is a difference between the levels of my heading factor.
-
-However, am I testing the "right" hypothesis? Richard Morley *ADD LINK TO WESBITE* proposed that testing for differences between your factor levels refers to an *unconstrained model* (unconstrained in the sense that I am looking for any differences between my factor levels without specifiying. However I actually have specific predictions on how my factor levels will differ. This refers to an *order constraint model*:
+However, am I testing the "right" hypothesis? Richard Morey (https://richarddmorey.org/2015/01/multiple-comparisons-with-bayesfactor-part-2-order-restrictions/#comment-7782) proposed that testing for differences between your factor levels refers to an *unconstrained model* (unconstrained in the sense that I am looking for any differences between my factor levels without specification). I actually have specific predictions on how my factor levels will differ. This refers to an *order constraint model*:
 
 0.5 < 1.0 < 1.5 < 2.0
 
-My order constraint model will allow me to make 3 comparisons with my Bayes factor:
+Already I have Bayes factor for the full model versus the null model. My order constraint model will allow me to make 2 more comparisons with my Bayes factor:
 
-- Full model versus the null model (using the anovaBF function)
 - Full model versus the order constraint model
 - Order contraint model versus null model
 
@@ -84,9 +79,53 @@ plot(samples[,2:3])
 plot(samples[,4:5])
 ```
 
-The *posterior* function allows us to sample from the posterior distribution from the Bayes factor.
+The *posterior* function allows me to sample from the posterior distribution of each heading.
 
-*Mu* usuaully refers to the population 
+I think the *mu* parameter refers to an estimated population mean parameter for reaction time. Each heading level is then compared to this mu parameter to compute the effect.
+
+The plots show the posterior distributions for each heading level and the standardised effect size. For the *0.5 heading*, the HDI spans across positive effect sizes (i.e. reactions times are higher than *mu*). For *1.0 heading* the HDI spans across zero (reaction times are lower than *mu*). For *1.5 and 2.0 heading* the HDIs span negative standardised effects sizes (reaction times are lower than *mu*).
+
+However these HDIs do how my order constraints...
+
+## Creating order constraint model
+
+```{r order constraint model}
+## check order constraint
+consistent = (samples[, "heading-1.5"] > samples[, "heading-2"]) &
+  (samples[, "heading-1"] > samples[, "heading-1.5"]) &
+  (samples[, "heading-0.5"] > samples[, "heading-1"])
+
+N_consistent = sum(consistent)
+```
+
+I construct order constraints whereby I expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1.
+
+## Order constraint model versus full model
+
+```{r constraint versus full model}
+bf_contraint_against_full = (N_consistent / 10000) / (1 / 8)
+bf_contraint_against_full
+```
+
+The posterior probability is the number of consistent order constraints from the posterior (*n_consistent*) divided by the number of samples (10000). Dividing the posterior by the prior distribution probabilites to get the Bayes factor of the constraint model versus the full model.
+
+We generate a Bayes factor of 8. Hence the data has changed my opinion of the data, in favour of the constraint model, by a factor of 8. 
+
+## Order constraint model versus null model
+
+```{r constraint versus the null model}
+## Convert bf1 to a number so that we can multiply it
+bf_full_against_null = as.vector(bf)
+
+## Use transitivity to compute desired Bayes factor
+bf_restriction_against_null <- bf_contraint_against_full * bf_full_against_null
+bf_restriction_against_null
+
+```
+
+If I multiple the Bayes factor from the full model by the Bayes factor of the contraint versus the full model, I can generate the Bayes factor for the constraint model versus the null model. This generates a Bayes factor of 1.79 x 10^76. This indicates the data is 1.79 x 10^76 more likely under the constraint model than under the null.
+
+Overall, I can say that there is more evidence for constraint model versus the null than for the standard main effect model versus the null. However with a Bayes factor of 8, I would remain inconclusive on the constraint versus full model comparison. 
 
 ## Setting my contrasts
 
