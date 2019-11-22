@@ -24,6 +24,7 @@ library(bayesplot) # allows plots for posterior predictive distributions
 library(loo) # Bayesian model comparison
 library(arm) # computes Bayes factor for glm model
 library(insight) # get posterior parameters 
+library(fitdistrplus) # investigating the distribution of my data
 ```
 
 ## Load data
@@ -125,7 +126,34 @@ bf_restriction_against_null
 
 If I multiple the Bayes factor from the full model by the Bayes factor of the contraint versus the full model, I can generate the Bayes factor for the constraint model versus the null model. This generates a Bayes factor of 1.79 x 10^76. This indicates the data is 1.79 x 10^76 more likely under the constraint model than under the null.
 
-Overall, I can say that there is more evidence for constraint model versus the null than for the standard main effect model versus the null. However with a Bayes factor of 8, I would remain inconclusive on the constraint versus full model comparison. 
+Overall, I can say that there is more evidence for constraint model versus the null than for the standard main effect model versus the null. However with a Bayes factor of 8, I would remain inconclusive on the constraint versus full model comparison.
+
+## Conclusions so far
+
+Using the anovaBF function gives me a nice introduction to Bayesian analyses. However even a Bayesian ANOVA relies on my error being normally distributed (which it is not). Because of this, I investigated Bayesian generalised linear models where I could account for my normal distribution of errors.
+
+## Looking at the distribution of my data
+
+```{r how is my data distributed}
+fit_g  <- fitdist(magnitudedata$FirstSteeringTime, "gamma")
+
+fit_ln <- fitdist(magnitudedata$FirstSteeringTime, "lnorm")
+
+par(mfrow = c(2,2))
+plot.legend <- c("gamma", "lognormal")
+denscomp(list(fit_g, fit_ln), legendtext = plot.legend)
+cdfcomp (list(fit_g, fit_ln), legendtext = plot.legend)
+qqcomp  (list(fit_g, fit_ln), legendtext = plot.legend)
+ppcomp  (list(fit_g, fit_ln), legendtext = plot.legend)
+```
+
+Here I looking at the distribution of my data.
+
+*Log-normal distribution* is like a normal distribution but only contains positive values. This creates a skewed distribution with a right tail. These characteristics match my reaction time data, hence the good fit.
+
+*Gamma distribution* is similar to *log-normal distribution* in that it is right skewed, and for continous data. 
+
+For both of these distributions, the shape parameter is held constant whilst the scale parameter shifts. This is good for my data as I have a lot of variance in my responses. As both of these distributions are so simialr, I proceed with *Gamma*.
 
 ## Setting my contrasts
 
