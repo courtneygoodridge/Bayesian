@@ -145,4 +145,10 @@ The previous was taken from the example given here:
 
 http://mc-stan.org/rstanarm/articles/continuous.html#gamma-regression-example
 
-This plots the regression line that was computed from the Bayesian ANOVA model. The uncertainty is visualised via draws from the posterior distribution at each heading angle. 
+This plots the regression line for the selected contrast that was computed from the Bayesian model. The uncertainty is visualised via draws from the posterior distribution at each heading angle.
+
+**TO DO**
+
+Investigate the point below by plotting different contrasts (perhaps facet_wrap per contrast?)
+
+- Need to be careful here and plot only the points that relate to the contrast. I.e. if I have selected the 1.0 vs 1.5 heading contrast, I should only plot 1.0 and 1.5 on the graph
