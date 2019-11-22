@@ -9,6 +9,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This markdown document is my first attempt at writing up a Bayesian analysis of my data. The data I am using is from experiment 1. For this example, I will be investigating how heading angle affects RTs. For a reminder, both Threshold and Accumulator models propose reduced RTs as heading increases.
 
+Firstly I analyse my data using a Bayesian ANOVA from the BayesFactor package. I then go on to use the rstanarm package to fit Bayesian generalised linear models to my data.
+
 ## Load packages 
 
 ```{r load packages, message =FALSE}
@@ -33,6 +35,22 @@ temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
 ```
+
+## Computing Bayesian ANOVA using BayesFactor package
+
+```{r computing Bayesian ANOVA using BayesFactor}
+
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(heading > 0)
+
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+bf <- anovaBF(FirstSteeringTime ~ heading, data = magnitudedata, rscaleEffects = c( r = 0.1))
+bf
+
+```
+
+Using the anovaBF function tests the full hypothesis model versus the null model hypothesis. In my example, this will be the main effect of heading. 
 
 ## Setting my contrasts
 
