@@ -72,14 +72,21 @@ My order constraint model will allow me to make 3 comparisons with my Bayes fact
 
 Bayes factor is the degree of change from prior to posterior odds. Hence if we can compute prior odds, we can compute the Bayes factor. Because I have not specified a prior distribution, my prior odds have equal probability across my factor levels. With 4 factors, the prior odds are 1/8 as there are 8 orderings.
 
-## Sampling from the posterior distribution
+## Sampling and plotting posterior distribution
 
 ```{r sample from the posterior distribution}
 samples <-  posterior(bf, iterations = 10000)
 head(samples)
+
+summary(samples[,2:5])
+
+plot(samples[,2:3])
+plot(samples[,4:5])
 ```
 
 The *posterior* function allows us to sample from the posterior distribution from the Bayes factor.
+
+*Mu* usuaully refers to the population 
 
 ## Setting my contrasts
 
