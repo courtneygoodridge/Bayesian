@@ -59,7 +59,7 @@ The computed Bayes factor is 2.24 x 10^75. This indicates that the current data 
 
 However, am I testing the "right" hypothesis? Richard Morey (https://richarddmorey.org/2015/01/multiple-comparisons-with-bayesfactor-part-2-order-restrictions/#comment-7782) proposed that testing for differences between your factor levels refers to an *unconstrained model* (unconstrained in the sense that I am looking for any differences between my factor levels without specification). I actually have specific predictions on how my factor levels will differ. This refers to an *order constraint model*:
 
-0.5 < 1.0 < 1.5 < 2.0
+0.5 > 1.0 > 1.5 > 2.0
 
 Already I have Bayes factor for the full model versus the null model. My order constraint model will allow me to make 2 more comparisons with my Bayes factor:
 
@@ -84,7 +84,7 @@ The *posterior* function allows me to sample from the posterior distribution of 
 
 I think the *mu* parameter refers to an estimated population mean parameter for reaction time. Each heading level is then compared to this mu parameter to compute the effect.
 
-The plots show the posterior distributions for each heading level and the standardised effect size. For the *0.5 heading*, the HDI spans across positive effect sizes (i.e. reactions times are higher than *mu*). For *1.0 heading* the HDI spans across zero (reaction times are lower than *mu*). For *1.5 and 2.0 heading* the HDIs span negative standardised effects sizes (reaction times are lower than *mu*).
+The plots show the posterior distributions for each heading level and the standardised effect size. For the *0.5 heading*, the HDI spans across positive effect sizes (i.e. reactions times are higher than *mu*). For *1.0 heading* the HDI spans across zero (reaction times are the same as *mu*). For *1.5 and 2.0 heading* the HDIs span negative standardised effects sizes (reaction times are lower than *mu*).
 
 However these HDIs do how my order constraints...
 
@@ -185,7 +185,7 @@ These contrasts allow me to investigate whether RTs decrease as heading values i
 
 ## Fitting Bayesian regression model
 
-```{r fitting Bayesian GLM model, message = FALSE}
+```{r fitting Bayesian GLM model, message = FALSE, warning = FALSE}
 fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), adapt_delta = 0.999, data = magnitudedata)
 ```
 
@@ -215,13 +215,13 @@ ggplot(data = posteriors) +
   geom_density(aes(x = heading1), fill = "red", alpha = 0.3) +
   geom_density(aes(x = heading2), fill = "orange", alpha = 0.3) +
   geom_density(aes(x = heading3), fill = "blue", alpha = 0.3) +
-  geom_vline(xintercept = -.02, color = "black", size = 2) +
-  geom_vline(xintercept = .02, color = "black", size = 2) +
+  geom_vline(xintercept = -.04, color = "black", size = 2) +
+  geom_vline(xintercept = 0, color = "black", size = 2) +
   xlim(-.15, .15) +
   xlab("standardised effect size")
 
 # establishing the percentage of the HDIs within the ROPE interval
-percentage_in_rope_glm <- rope(fit_glm, ci = 1, range = c(-0.02, 0.02))
+percentage_in_rope_glm <- rope(fit_glm, ci = 1, range = c(-0.04, 0))
 
 percentage_in_rope_glm
 
@@ -234,11 +234,15 @@ median(posteriors$heading3)
 
 ROPE stands for "region of practical equivalence". Comparing your alternative hypothesis to a single point null does not make much sense theoretically, as it is very likely there will be a difference (even if it is extremely small). I can define a ROPE which is an interval around a point null that is "practically equivalent" to it.
 
-Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0.1 (half of a small effect size) multiplied by the standard deviation of the outcome variable. Hence this is what is done here.
+Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0.1 (half of a small effect size) multiplied by the standard deviation of the outcome variable. Ordinarily this would generate a ROPE interval of [-0.02, 0.02]. 
 
-I can then draw from the posterior distributions and plot the HDIs for each of my contrasts. This provides a nice literal interpretation 
+However this refers to the a 2 tailed hypothesis. I can be more specific. I know the direction of my effect (negative) thus I double the negative part of the interval and implement a one tailed ROPE interval [-0.04, 0]. These are defined as the **black** lines.
 
-"*95% of the the most credible value for standardised effect size of my contrast are not practically equivalent to the null*". 
+I can then draw from the posterior distributions, plot the HDIs for each of my contrasts and indicate the median most credible value with a vertical line. This provides a nice literal interpretation 
+
+"*95% of the the most credible values for standardised effect size of my contrasts are not practically equivalent to the null*". 
+
+**Sidenote** I get a warning of multicollinearity between 2 of my contrasts (heading1 and heading2). This likely due to my contrast matrix being linearly dependent. 
 
 ## Posterior predictive distributions
 
@@ -261,7 +265,7 @@ My model demonstrates a reasonably good fit and predicts the peak location well,
 
 ## Computing a Bayes factor
 
-```{r Bayes factor}
+```{r Bayes factor, message = FALSE, warning = FALSE}
 
 bf_glm <- bayesfactor_parameters(fit_glm, null = c(-.02,.02))
 bf_glm
@@ -275,7 +279,7 @@ This is based upon the example given here (https://easystats.github.io/bayestest
 
 ## Bayesian GLM model with lognormal family and model comparison
 
-```{r model comparison using the loo package}
+```{r model comparison using the loo package, message = FALSE, warning = FALSE}
 fit_glm_log <- stan_glm(FirstSteeringTime ~ heading, family = gaussian(link = "log"), adapt_delta = 0.999, data = magnitudedata)
 
 loo_glm <- loo(fit_glm)
