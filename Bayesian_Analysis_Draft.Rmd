@@ -267,7 +267,7 @@ My model demonstrates a reasonably good fit and predicts the peak location well,
 
 ```{r Bayes factor, message = FALSE, warning = FALSE}
 
-bf_glm <- bayesfactor_parameters(fit_glm, null = c(-.02,.02))
+bf_glm <- bayesfactor_parameters(fit_glm, null = c(-.04, 0))
 bf_glm
 
 ```
