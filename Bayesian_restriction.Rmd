@@ -7,7 +7,14 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This markdown is for me to experiment with contrasts and restriction models from the bayestestR package. If it goes well, this could be added to the main Bayesian analysis script.
+This markdown is for me to experiment with contrasts and restriction models from the bayestestR package. If it goes well, this could be added to the main Bayesian analysis script. The following script is based upon the example here: (https://easystats.github.io/bayestestR/articles/bayes_factors.html#specifying-correct-priors-for-factors-with-more-than-2-levels)
+
+**TO DO**
+
+- Try this again with weakly informative prior (cauchy distribution with median of 0.5)
+- Remove link function and just use Gamma distribution (example uses just Gaussian distribution) so maybe that is the problem
+
+Essentially make my example similar to the example given
 
 ## Load packages 
 
@@ -45,47 +52,47 @@ magnitudedata <- magnitudedata %>%
 
 magnitudedata$heading <- as.factor(magnitudedata$heading)
 
-# default contrasts - orthogonal
-contrasts(magnitudedata$heading)
+contrasts(magnitudedata$heading) <- "contr.sum"
+```
 
-# setting my own contrasts - better addresses my research question
-contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
+First I sent my contrasts to "contr.sum" which compares each of my heading levels to the 2 degrees heading levels.
 
+## Fitting Bayesian model for contr.sum contrasts
+
+```{r contr.sum contrasts}
 contrasts(magnitudedata$heading) <- "contr.sum"
 
+fit_sum <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), adapt_delta = 0.999, data = magnitudedata)
+
+c_sum <- pairs(emmeans(fit_sum, ~ heading))
+c_sum
 ```
 
-## Fitting Bayesian model
+## Fitting Bayesian model for contr.bayes contrasts
 
-```{r model fit}
-fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), prior = cauchy(0.5,0.1), adapt_delta = 0.999, data = magnitudedata)
-
-c_bayes <- pairs(emmeans(fit_glm, ~ heading))
-c_bayes
-
-plot(c_bayes)
-
-
-bf_glm <- bayesfactor_parameters(fit_glm, null = c(-.04, 0))
-bf_glm
-
-plot(bf_glm)
-
-```
-
-## Computing Bayes factor under a restriction model
-
-```{r Bayes factor restriction}
-
+```{r contr.bayes contrasts}
 contrasts(magnitudedata$heading) <- "contr.bayes"
 
-restriction_hypothesis <- c("0.5 > 1 > 1.5 > 2")
+fit_bayes <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), adapt_delta = 0.999, data = magnitudedata)
 
-em_bayes <- emmeans(fit_glm, ~ heading)
-em_bayes # the posterior marginal means
-
-bf_glm_restricted <- bayesfactor_restricted(em_bayes, fit_glm, hypothesis = restriction_hypothesis)
-
-bf_glm_restricted
-
+c_bayes <- pairs(emmeans(fit_bayes, ~ heading))
+c_bayes
 ```
+
+## Construcing hypothesis restriction
+
+```{r hypothesis for restriction}
+hyp <- c("2 < 1.5  & 1 < 0.5")
+```
+
+
+## Restriction model for contr.sum model
+
+```{r contr.sum restriction}
+em_sum <- emmeans(fit_sum, ~ heading)
+em_sum # the posterior marginal means
+
+bayesfactor_restricted(em_sum, fit_sum, hypothesis = hyp)
+```
+
+
