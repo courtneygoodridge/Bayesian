@@ -57,7 +57,7 @@ Using the anovaBF function tests the full hypothesis model versus the null model
 
 The computed Bayes factor is 2.24 x 10^75. This indicates that the current data is 2.24 x 10^75 times more likely under the alternative hypothesis versus the null hypothesis i.e. there is a main effect difference between the levels of my heading factor.
 
-However, am I testing the "right" hypothesis? Richard Morey (https://richarddmorey.org/2015/01/multiple-comparisons-with-bayesfactor-part-2-order-restrictions/#comment-7782) proposed that testing for differences between your factor levels refers to an *unconstrained model* (unconstrained in the sense that I am looking for any differences between my factor levels without specification). I actually have specific predictions on how my factor levels will differ. This refers to an *order constraint model*:
+However, am I testing the "right" hypothesis? Richard Morey (https://richarddmorey.org/2015/01/multiple-comparisons-with-bayesfactor-part-2-order-restrictions/#comment-7782) proposed that testing for differences between your factor levels refers to an *unconstrained model* (unconstrained in the sense that I am looking for any differences between my factor levels without specification). I actually have specific predictions on how my factor levels will differ. This refers to an *order restriction model*:
 
 0.5 > 1.0 > 1.5 > 2.0
 
@@ -99,7 +99,7 @@ consistent = (samples[, "heading-1.5"] > samples[, "heading-2"]) &
 N_consistent = sum(consistent)
 ```
 
-I construct order constraints whereby I expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1.
+I construct order restrictions whereby I expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1.
 
 ## Order restriction  model versus full model
 
@@ -181,7 +181,7 @@ However I did not feel that these were the best contrasts for my research questi
 
 These contrasts allow me to investigate whether RTs decrease as heading values increase. 
 
-**Problem**: I am unsure how to implement a contrast matrix that would match the constraint model I implemented for the Bayesian ANOVA. Thus this is the closest I can get so far (however I'm sure it is possible).
+**Problem**: I am unsure how to implement a contrast matrix that would match the restriction  model I implemented for the Bayesian ANOVA. Thus this is the closest I can get so far (however I'm sure it is possible).
 
 ## Fitting Bayesian regression model
 
@@ -290,7 +290,7 @@ bf_glm
 ```
 I can compute my Bayes factor for each contrast. This also allows me to compute my Bayes factor for the alternative hypothesis versus the ROPE interval null hypothesis, rather than a point null. This demonstrates substantial evidence for the alternative hypotheses for each contrast.
 
-Ideally, I would also implement a contrast where I am comparing: *0.5 > 1.0 > 1.5 > 2.0* but as explained above, I'm unsure how to implement that within the contrast matrix. 
+Ideally, I would also implement a contrast where I am comparing: *0.5 > 1.0 > 1.5 > 2.0* but as explained above, I'm unsure how to implement that within the contrast matrix (**see Bayesian_restriction markdown for how to do this**. 
 
 This is based upon the example given here (https://easystats.github.io/bayestestR/articles/bayes_factors.html#testing-models-parameters-with-bayes-factors)
 
