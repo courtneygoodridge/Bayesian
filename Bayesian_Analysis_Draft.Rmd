@@ -61,9 +61,9 @@ However, am I testing the "right" hypothesis? Richard Morey (https://richarddmor
 
 0.5 > 1.0 > 1.5 > 2.0
 
-Already I have Bayes factor for the full model versus the null model. My order constraint model will allow me to make 2 more comparisons with my Bayes factor:
+Already I have Bayes factor for the full model versus the null model. My order restriction model will allow me to make 2 more comparisons with my Bayes factor:
 
-- Full model versus the order constraint model
+- Full model versus the order restriction model
 - Order contraint model versus null model
 
 Bayes factor is the degree of change from prior to posterior odds. Hence if we can compute prior odds, we can compute the Bayes factor. Because I have not specified a prior distribution, my prior odds have equal probability across my factor levels. With 4 factors, the prior odds are 1/8 as there are 8 orderings.
@@ -86,12 +86,12 @@ I think the *mu* parameter refers to an estimated population mean parameter for 
 
 The plots show the posterior distributions for each heading level and the standardised effect size. For the *0.5 heading*, the HDI spans across positive effect sizes (i.e. reactions times are higher than *mu*). For *1.0 heading* the HDI spans across zero (reaction times are the same as *mu*). For *1.5 and 2.0 heading* the HDIs span negative standardised effects sizes (reaction times are lower than *mu*).
 
-However these HDIs do how my order constraints...
+However these HDIs do how my order restrictions...
 
-## Creating order constraint model
+## Creating order restriction model
 
-```{r order constraint model}
-## check order constraint
+```{r order restriction  model}
+## check order restriction 
 consistent = (samples[, "heading-1.5"] > samples[, "heading-2"]) &
   (samples[, "heading-1"] > samples[, "heading-1.5"]) &
   (samples[, "heading-0.5"] > samples[, "heading-1"])
@@ -101,20 +101,20 @@ N_consistent = sum(consistent)
 
 I construct order constraints whereby I expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1.
 
-## Order constraint model versus full model
+## Order restriction  model versus full model
 
-```{r constraint versus full model}
+```{r restriction versus full model}
 bf_contraint_against_full = (N_consistent / 10000) / (1 / 8)
 bf_contraint_against_full
 ```
 
-The posterior probability is the number of consistent order constraints from the posterior (*n_consistent*) divided by the number of samples (10000). Dividing the posterior by the prior distribution probabilites to get the Bayes factor of the constraint model versus the full model.
+The posterior probability is the number of consistent order restrictions from the posterior (*n_consistent*) divided by the number of samples (10000). Dividing the posterior by the prior distribution probabilites to get the Bayes factor of the restriction model versus the full model.
 
-We generate a Bayes factor of 8. Hence the data has changed my opinion of the data, in favour of the constraint model, by a factor of 8. 
+We generate a Bayes factor of 8. Hence the data has changed my opinion of the data, in favour of the restriction model, by a factor of 8. 
 
-## Order constraint model versus null model
+## Order restriction model versus null model
 
-```{r constraint versus the null model}
+```{r restriction versus the null model}
 ## Convert bf1 to a number so that we can multiply it
 bf_full_against_null = as.vector(bf)
 
@@ -124,9 +124,9 @@ bf_restriction_against_null
 
 ```
 
-If I multiple the Bayes factor from the full model by the Bayes factor of the contraint versus the full model, I can generate the Bayes factor for the constraint model versus the null model. This generates a Bayes factor of 1.79 x 10^76. This indicates the data is 1.79 x 10^76 more likely under the constraint model than under the null.
+If I multiple the Bayes factor from the full model by the Bayes factor of the contraint versus the full model, I can generate the Bayes factor for the restriction model versus the null model. This generates a Bayes factor of 1.79 x 10^76. This indicates the data is 1.79 x 10^76 more likely under the restriction model than under the null.
 
-Overall, I can say that there is more evidence for constraint model versus the null than for the standard main effect model versus the null. However with a Bayes factor of 8, I would remain inconclusive on the constraint versus full model comparison.
+Overall, I can say that there is more evidence for restriction model versus the null than for the standard main effect model versus the null. However with a Bayes factor of 8, I would remain inconclusive on the restriction versus full model comparison.
 
 ## Conclusions so far
 
