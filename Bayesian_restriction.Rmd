@@ -1,0 +1,91 @@
+---
+title: "Bayesian_restriction"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This markdown is for me to experiment with contrasts and restriction models from the bayestestR package. If it goes well, this could be added to the main Bayesian analysis script.
+
+## Load packages 
+
+```{r load packages, message =FALSE}
+library(dplyr) # data manipulation
+library(tidyr) # data manipulation
+library(ggplot2) # data vis
+library(BayesFactor) # performs Bayesian ANOVA
+library(rstanarm) # bayesian regression modelling
+library(bayestestR) # describes Bayesian models and posterior distributions
+library(bayesplot) # allows plots for posterior predictive distributions
+library(loo) # Bayesian model comparison
+library(arm) # computes Bayes factor for glm model
+library(insight) # get posterior parameters 
+library(fitdistrplus) # investigating the distribution of my data
+```
+
+## Load data
+
+```{r load my data}
+# rm(list = ls()) - clear global environment
+# home working directory
+# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_Code/experiment_1")
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv"))
+myfiles = lapply(temp, read.csv)
+magnitudedata <- do.call(rbind.data.frame, myfiles)
+```
+
+## Setting heading levels as factors and setting contrasts
+
+```{r factors}
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(heading > 0)
+
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+# default contrasts - orthogonal
+contrasts(magnitudedata$heading)
+
+# setting my own contrasts - better addresses my research question
+contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
+
+contrasts(magnitudedata$heading) <- "contr.sum"
+
+```
+
+## Fitting Bayesian model
+
+```{r model fit}
+fit_glm <- stan_glm(FirstSteeringTime ~ heading, family = Gamma(link = "identity"), prior = cauchy(0.5,0.1), adapt_delta = 0.999, data = magnitudedata)
+
+c_bayes <- pairs(emmeans(fit_glm, ~ heading))
+c_bayes
+
+plot(c_bayes)
+
+
+bf_glm <- bayesfactor_parameters(fit_glm, null = c(-.04, 0))
+bf_glm
+
+plot(bf_glm)
+
+```
+
+## Computing Bayes factor under a restriction model
+
+```{r Bayes factor restriction}
+
+contrasts(magnitudedata$heading) <- "contr.bayes"
+
+restriction_hypothesis <- c("0.5 > 1 > 1.5 > 2")
+
+em_bayes <- emmeans(fit_glm, ~ heading)
+em_bayes # the posterior marginal means
+
+bf_glm_restricted <- bayesfactor_restricted(em_bayes, fit_glm, hypothesis = restriction_hypothesis)
+
+bf_glm_restricted
+
+```
