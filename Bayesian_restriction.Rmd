@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This markdown details a description of how to implement a restriction model. The original model comes from the easy stats website (https://easystats.github.io/bayestestR/articles/bayes_factors.html#specifying-correct-priors-for-factors-with-more-than-2-levels) however I had issues with implementing my own example.
 
-After reporting an issue with the bayestestR team, it become clear that there is a bug when trying to implement restriction models with a Gamma distribution. One of the package creates helped me formulate a solution around this bug, and this markdown details that solution.
+After reporting an issue with the bayestestR team, it became clear that there is a bug when trying to implement restriction models with a Gamma distribution. One of the package creates helped me formulate a solution around this bug, and this markdown details that solution also.
 
 ## Load packages 
 
@@ -50,7 +50,6 @@ magnitudedata <- magnitudedata %>%
   dplyr::filter(heading > 0)
 
 magnitudedata$heading <- as.factor(magnitudedata$heading)
-
 ```
 
 Here I remove the 0 heading condition and change my predictor variable to a factor. 
@@ -66,7 +65,7 @@ fit_sum <- stan_glm(FirstSteeringTime ~ heading,
                       data = magnitudedata)
 ```
 
-First I fit a Bayesian model under the default contrast setting (*contr.sum*).
+First I fit a Bayesian model under the default contrast setting (*contr.sum*). According to the example, this contrast setting will bias priors (which will thus bias Bayes factors for the restriction models).
 
 ## Order restriction and estimated marginal means
 
@@ -77,11 +76,19 @@ hyp_sum <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`",
 # compute posterior marginal means
 em_sum <- emmeans(fit_sum, ~ heading)
 
-# compute prior model under the default sum treatments and estimated marginal means of this prior model
+# compute prior model estimated marginal means of this prior model
 fit_sum_prior <- update(fit_sum, prior_PD = TRUE)
 em_sum_prior <- emmeans(fit_sum_prior, ~ heading)
-
 ```
+
+First I set the restriction model. Each line is a restriction. To demonstrate the bias, I set two restrictions that I might be interested in:
+
+- 2 < 1.5 < 1 < 0.5
+- 0.5 > 2, 0.5 > 1.5, 0.5 > 1
+
+I then compute my estimated marginal means from my fitted Bayesian model. These are the marginal means from the posterior distribution.
+
+In order to get around the *Gamma* family bug, I need to set a prior-only model. Setting *prior_PD* as TRUE updates the original model but woth draws from the prior distribution. I then compute the estimated marginal means for this prior ony model using the *emmeans* function. 
 
 ## Bayes factor for restricted model under contr.sum contrast
 
@@ -90,9 +97,17 @@ em_sum_prior <- emmeans(fit_sum_prior, ~ heading)
 bayesfactor_restricted(posterior = em_sum,
                        prior = em_sum_prior,
                        hypothesis = hyp_sum)
-
 ```
 
+Using the prior and posterior model, I can then calculate a Bayes factors for both of my restrictions.
+
+Automatically we can see an issue. Under the *contr.sum* contrast setting, prior probability odds are biased for some of restrictions. In this example, one of the orders is *a priori* more likely than the other. This will thus influence the Bayes factor and the conclusions that are made between alternative and null hypotheses.
+
+## Conclusions so far
+
+Thus far I have detailed how the default *contr.sum* setting can bias prior for diffrent restrictions. The example also explains how this is worsened under other contrast settings (*contr.treatment*). The only way around this is to compute orthogonal contrasts which are set via the *contr.bayes*.
+
+According to the documentation (https://www.rdocumentation.org/packages/bayestestR/versions/0.4.0/topics/contr.bayes) the interpretation of the parameters becomes obscure when using this contrast. However it is essential for unbiased priors. 
 
 ## Fitting Bayesian model for contr.bayes contrast
 
@@ -110,8 +125,7 @@ I change the contrast setting to *contr.bayes*. Doing this allows for better inf
 ## Generate estimated marginal means for each heading from the fitted model
 
 ```{r estimated marginal means}
-bayes_sum <- emmeans(fit_bayes, ~ heading)
-bayes_sum
+em_bayes <- emmeans(fit_bayes, ~ heading)
 ```
 
 The *emmeans* function calculates the estimated margin means based upon the Bayesian model fit.
@@ -120,7 +134,7 @@ The *emmeans* function calculates the estimated margin means based upon the Baye
 
 ```{r prior model implementation}
 fit_bayes_prior <- update(fit_bayes, prior_PD = TRUE)
-bayes_sum_prior <- emmeans(fit_bayes_prior, ~ heading)
+em_bayes_prior <- emmeans(fit_bayes_prior, ~ heading)
 ```
 
 First I update the model and set *prior_PD* as TRUE. This generates samples from the prior distributions for my parameters (i.e. the levels of my heading factor). This means that the *fit_bayes_prior* object is the same as the *fit_bayes* - it just draws from the prior distribution rather than the posterior distribution.
@@ -138,69 +152,11 @@ If parameters are numbers, they need to be surrounded by back ticks when formula
 ## Calculating Bayes factor for restriction model
 
 ```{r restriction Bayes}
-bayesfactor_restricted(posterior = bayes_sum,
-                       prior = bayes_sum_prior,
+bayesfactor_restricted(posterior = em_bayes,
+                       prior = em_bayes_prior,
                        hypothesis = hyp)
 ```
 
 I pass my prior estimates model for my priors arguement (as it is calculated from draws of the prior distributuon) and the orignal model as my posterior argument. Hence with both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
 
 This reveals that the current data is 61.54 times more likely under the restriction model than under the un-restricted model. 
-
-
-
-
-
-## Fitting Bayesian model for contr.sum contrasts
-
-```{r contr.sum contrasts}
-contrasts(magnitudedata$heading) <- "contr.sum"
-
-fit_sum <- stan_glm(FirstSteeringTime ~ heading,
-                       family = Gamma(link = "identity"),
-                       adapt_delta = 0.999,
-                       data = magnitudedata)
-
-c_sum <- pairs(emmeans(fit_sum, ~ heading))
-c_sum
-```
-
-## Fitting Bayesian model for contr.bayes contrasts
-
-```{r contr.bayes contrasts}
-contrasts(magnitudedata$heading) <- "contr.bayes"
-
-fit_bayes <- stan_glm(FirstSteeringTime ~ heading, family = gaussian(), prior = cauchy(0.5, 0.1), adapt_delta = 0.999, data = magnitudedata)
-               
-
-c_bayes <- pairs(emmeans(fit_bayes, ~ heading))
-c_bayes
-```
-
-## Construcing hypothesis restriction
-
-```{r hypothesis for restriction}
-hyp <- c("2 < 1.5 & 1.5 < 1 & 1 < 0.5")
-```
-
-
-## Restriction model for contr.sum model
-
-```{r contr.sum restriction}
-
-posteriors <- insight::get_parameters(fit_sum)
-
-em_sum <- emmeans(fit_sum, ~ heading)
-em_sum # the posterior marginal means
-
-bayesfactor_restricted(em_sum, fit_sum, hypothesis = hyp)
-```
-
-## Restriction model for contr.bayes model
-
-```{r contr.bayes restriction}
-bayes_sum <- emmeans(fit_bayes, ~ heading)
-bayes_sum # the posterior marginal means
-
-bayesfactor_restricted(bayes_sum, fit_bayes, hypothesis = hyp)
-```
