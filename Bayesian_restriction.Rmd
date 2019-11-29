@@ -9,11 +9,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## The aim of this markdown file
 
-This markdown highlights my problems when trying to implement restriction models for my contrasts. Below, I compare the examples even on the easy stats website (https://easystats.github.io/bayestestR/articles/bayes_factors.html#specifying-correct-priors-for-factors-with-more-than-2-levels) to my own examples.
+This markdown details a description of how to implement a restriction model. The original model comes from the easy stats website (https://easystats.github.io/bayestestR/articles/bayes_factors.html#specifying-correct-priors-for-factors-with-more-than-2-levels) however I had issues with implementing my own example.
 
-My experiment involves a corrective steering task. Drivers are traveling down a simulated road line that is invisible. As the road line becomes visible, the driver's heading is offset (i.e. they are travelling away from the line). Their task is to steer back onto the line. The road line is presented for 2.5 seconds. For this example analysis, I am measuring drivers reaction time for steering onset (FirstSteeringTime). 
-
-My hypothesis is that FirstSteeringTime will decreases as heading increases. 
+After reporting an issue with the bayestestR team, it become clear that there is a bug when trying to implement restriction models with a Gamma distribution. One of the package creates helped me formulate a solution around this bug, and this markdown details that solution.
 
 ## Load packages 
 
@@ -30,7 +28,7 @@ library(arm) # computes Bayes factor for glm model
 library(insight) # get posterior parameters 
 library(fitdistrplus) # investigating the distribution of my data
 library(see) # helps with plotting for bayestestR package
-library(emmeans) # marginal mean function
+library(emmeans) # marginal mean from Bayesian model
 ```
 
 ## Load my data and data used in the example
@@ -43,7 +41,6 @@ setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experim
 temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
-data("iris")
 ```
 
 ## Setting heading levels as factors and setting contrasts
@@ -56,9 +53,59 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 
 ```
 
-Here I remove the 0 heading condition (this was a control condition in my experiment and I am not using it for analysis as subjects should not have made a steering adjustment). 
+Here I remove the 0 heading condition and change my predictor variable to a factor. 
 
-I also change my predictor variable to a factor. 
+## Fitting Bayesian model for contr.bayes contrast
+
+```{r contr.bayes model fit}
+contrasts(magnitudedata$heading) <- "contr.bayes"
+
+fit_bayes <- stan_glm(FirstSteeringTime ~ heading,
+                      family = Gamma(link ="identity"),
+                      adapt_delta = 0.999,
+                      data = magnitudedata)
+```
+
+I change the contrast setting to *contr.bayes*. Doing this allows for better informed priors when dealing with 3 or more factor levels. It essentially ensures that each prior for every contrast is equal. Otherwise when it comes to the posterior distributions, a contrast with a slightly different prior will be biased and thus the Bayes factor will be altered. 
+
+## Generate estimated marginal means for each heading from the fitted model
+
+```{r estimated marginal means}
+bayes_sum <- emmeans(fit_bayes, ~ heading)
+bayes_sum
+```
+The *emmeans* function calculates the estimated margin means based upon the Bayesian model fit.
+
+## Creating a prior model is get around a bug in the bayestestR package
+
+```{r prior model implementation}
+fit_bayes_prior <- update(fit_bayes, prior_PD = TRUE)
+bayes_sum_prior <- emmeans(fit_bayes_prior, ~ heading)
+```
+
+First I update the model and set *prior_PD* as TRUE. This generates samples from the prior distributions for my parameters (i.e. the levels of my heading factor). This means that the *fit_bayes_prior* object is the same as the *fit_bayes* - it just draws from the prior distribution rather than the posterior distribution.
+
+The *bayes_sum_prior* object is then the estimated marginal means based upon the prior Bayesian model fit. 
+
+## Setting the hypotheses for the restriction model
+
+```{r hypothesis}
+hyp <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`")
+```
+
+If parameters are numbers, they need to be surrounded by back ticks when formulating the hypothesis. 
+
+## Calculating Bayes factor for restriction model
+
+```{r restriction Bayes}
+bayesfactor_restricted(posterior = bayes_sum,
+                       prior = bayes_sum_prior,
+                       hypothesis = hyp)
+```
+
+I pass my prior estimates model for my priors arguement (as it is calculated from draws of the prior distributuon) and the orignal model as my posterior argument. Hence with both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
+
+This reveals that the current data is 61.54 times more likely under the restriction model than under the un-restricted model. 
 
 ## Fitting Bayesian model for contr.sum contrasts
 
