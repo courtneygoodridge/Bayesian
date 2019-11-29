@@ -1,0 +1,69 @@
+---
+title: "Bayesian_Factorial_ANOVA"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Aim of this markdown
+
+The aim of this markdown is to implement a Bayesian factorial ANOVA in prepartion for analysis of my experiment 2 data. I will be using data from the *ToothGrowth* package. I will also be comparing this analysis to the Frequentist alternative.
+
+## Load packages 
+
+```{r load packages, message =FALSE}
+library(dplyr) # data manipulation
+library(tidyr) # data manipulation
+library(ggplot2) # data vis
+library(BayesFactor) # performs Bayesian ANOVA
+library(rstanarm) # bayesian regression modelling
+library(bayestestR) # describes Bayesian models and posterior distributions
+library(bayesplot) # allows plots for posterior predictive distributions
+library(loo) # Bayesian model comparison
+library(arm) # computes Bayes factor for glm model
+library(insight) # get posterior parameters 
+library(fitdistrplus) # investigating the distribution of my data
+library(see) # helps with plotting for bayestestR package
+library(emmeans) # marginal mean from Bayesian model
+library(sjstats) # computes partial eta squared effect size
+library(effsize) # computes cohen's D for follow up t-tests
+library(Rmisc) # for confidence intervals on the interaction plots
+```
+
+## Load example data 
+
+```{r cars}
+data("ToothGrowth")
+View(ToothGrowth)
+```
+
+The following data set is from an experiment with a 3 x 2 factorial design. The outcome varible is tooth length (*len*), one factor is supplement type (*vitamin C (VC) or orange juice (OJ)*) and the other is the dose of the supplement (*0.5, 1.0 and 2.0*).
+
+Are there main effect of supplement and dose on tooth growth, and do the two interact? Firstly, lets analysis the data using frequentist methods.
+
+```{r summary statistics}
+ToothGrowth %>%
+  dplyr::group_by(supp, dose) %>%
+  dplyr::summarise(m = mean(len))
+```
+
+Summary statistics show that as dose increases, tooth length increases. This is the case for supplements.
+
+```{r interaction plot with confidence intervals}
+# computes standard error and 95% confidence intervals
+CIerror_bar <- summarySE(ToothGrowth, measurevar = "len", groupvars = c("supp", "dose"))
+
+ggplot(data = CIerror_bar, aes(x = dose, color = supp, group = supp, y = len)) +
+         stat_summary(fun.y = mean, geom = "point") +
+         stat_summary(fun.y = mean, geom = "line") +
+  geom_errorbar(aes(ymin = len - se, ymax = len + se), width = .1) +
+  geom_point(data = ToothGrowth, aes(x = dose, y = len), alpha = 0.5)
+```
+
+
+
+
+
+
