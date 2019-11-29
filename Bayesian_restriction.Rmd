@@ -55,6 +55,45 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 
 Here I remove the 0 heading condition and change my predictor variable to a factor. 
 
+## Fitting Bayesian model for contr.sum contrast
+
+```{r contr.sum model fit}
+contrasts(magnitudedata$heading) <- "contr.sum"
+
+fit_sum <- stan_glm(FirstSteeringTime ~ heading,
+                      family = Gamma(link ="identity"),
+                      adapt_delta = 0.999,
+                      data = magnitudedata)
+```
+
+First I fit a Bayesian model under the default contrast setting (*contr.sum*).
+
+## Order restriction and estimated marginal means
+
+```{r order restriction}
+hyp_sum <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`",
+             "`0.5` > `2` & `0.5` > `1.5` & `0.5` > `1`")
+
+# compute posterior marginal means
+em_sum <- emmeans(fit_sum, ~ heading)
+
+# compute prior model under the default sum treatments and estimated marginal means of this prior model
+fit_sum_prior <- update(fit_sum, prior_PD = TRUE)
+em_sum_prior <- emmeans(fit_sum_prior, ~ heading)
+
+```
+
+## Bayes factor for restricted model under contr.sum contrast
+
+```{r resttriction for contr.sum contrast}
+
+bayesfactor_restricted(posterior = em_sum,
+                       prior = em_sum_prior,
+                       hypothesis = hyp_sum)
+
+```
+
+
 ## Fitting Bayesian model for contr.bayes contrast
 
 ```{r contr.bayes model fit}
@@ -74,6 +113,7 @@ I change the contrast setting to *contr.bayes*. Doing this allows for better inf
 bayes_sum <- emmeans(fit_bayes, ~ heading)
 bayes_sum
 ```
+
 The *emmeans* function calculates the estimated margin means based upon the Bayesian model fit.
 
 ## Creating a prior model is get around a bug in the bayestestR package
@@ -106,6 +146,10 @@ bayesfactor_restricted(posterior = bayes_sum,
 I pass my prior estimates model for my priors arguement (as it is calculated from draws of the prior distributuon) and the orignal model as my posterior argument. Hence with both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
 
 This reveals that the current data is 61.54 times more likely under the restriction model than under the un-restricted model. 
+
+
+
+
 
 ## Fitting Bayesian model for contr.sum contrasts
 
