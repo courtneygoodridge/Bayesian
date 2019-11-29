@@ -30,6 +30,7 @@ library(emmeans) # marginal mean from Bayesian model
 library(sjstats) # computes partial eta squared effect size
 library(effsize) # computes cohen's D for follow up t-tests
 library(Rmisc) # for confidence intervals on the interaction plots
+library(lsr) # for calculating effect size 
 ```
 
 ## Load example data 
@@ -43,6 +44,8 @@ The following data set is from an experiment with a 3 x 2 factorial design. The 
 
 Are there main effect of supplement and dose on tooth growth, and do the two interact? Firstly, lets analysis the data using frequentist methods.
 
+## Summary statistics
+
 ```{r summary statistics}
 ToothGrowth %>%
   dplyr::group_by(supp, dose) %>%
@@ -50,6 +53,8 @@ ToothGrowth %>%
 ```
 
 Summary statistics show that as dose increases, tooth length increases. This is the case for supplements.
+
+# Interaction plots
 
 ```{r interaction plot with confidence intervals}
 # computes standard error and 95% confidence intervals
@@ -59,11 +64,48 @@ ggplot(data = CIerror_bar, aes(x = dose, color = supp, group = supp, y = len)) +
          stat_summary(fun.y = mean, geom = "point") +
          stat_summary(fun.y = mean, geom = "line") +
   geom_errorbar(aes(ymin = len - se, ymax = len + se), width = .1) +
-  geom_point(data = ToothGrowth, aes(x = dose, y = len), alpha = 0.5)
+  geom_point(data = ToothGrowth, aes(x = dose, y = len), alpha = 0.5) +
+  ylab("Tooth length (mm)") +
+  xlab("Dosage (mg)")
 ```
 
+They appears to be a clear main effect of dose (as dose increases tooth length increases) and supplement (orange juice appears to provide increase tooth length). The interaction is less obvious. This I implement a 3x2 factorial ANOVA to investigate these effects. 
 
+## Two way factorial ANOVA (frequentist)
 
+```{r frequentist ANOVA}
+ToothGrowth$dose <- as.factor(ToothGrowth$dose)
 
+aov.result <- aov(len ~ supp * dose, data = ToothGrowth)
+plot(aov.result, 2)
 
+summary(aov.result)
+etaSquared(aov.result)
+```
+The Q-Q plot plots theoretical quantiles agaist the standardised residuals to visualise normality. This plot appears to indicate that the residuals are normally distributed, thus the normality assumption of the ANOVA has not been violated. 
 
+The 3x2 ANOVA reveals the following:
+
+- A significant main effect of supplement with a medium effect size [f(1,56) = 12.32, p = 0.0008, eta^2 = 0.06]. Because there are only two levels, I can say that orange juice significantly improves tooth growth versus vitamin C. 
+
+- A significant main effect of dose with a large effect size [f(1,56) = 133.42, p < 0.0001, eta^2 = 0.64]. This will need post hoc analyses to investigate. 
+
+- A significant interaction between dose and supplement with a small effect size [f(1,56) = 5.33, p = 0.02, eta^2 = 0.03].
+
+Thus with this interaction, I then perform post hoc comparisons to investigate this difference.
+
+## Post hoc analyses of significant interaction
+
+```{r tukeyHSD}
+TukeyHSD(aov.result)
+```
+
+Tukey's HSD reveals that the main effect of dose comes about via the higher the dose, the bigger the increase in tooth growth.
+
+The interaction of dose and supplement comes about via orange juice providing larger increases in tooth growth as the dose increases, however for the highest doses there was no difference in between orange juice and vitamin C. 
+
+## Conclusions so far
+
+Thus far, frequentist methods have revealed significnat main effects of dose and supplement. They have also revealed that the effect of dose significantly depends on the supplement - i.e. orange juice provides larger growth in small doses, but there is no difference in tooth growth between the supplements for the maximum doses. 
+
+These conclusions are fair, and the correct analyses and corrections have been implemented. How do this compare with Bayesian equivalents?
