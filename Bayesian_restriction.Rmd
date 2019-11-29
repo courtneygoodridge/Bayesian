@@ -88,26 +88,25 @@ First I set the restriction model. Each line is a restriction. To demonstrate th
 
 I then compute my estimated marginal means from my fitted Bayesian model. These are the marginal means from the posterior distribution.
 
-In order to get around the *Gamma* family bug, I need to set a prior-only model. Setting *prior_PD* as TRUE updates the original model but woth draws from the prior distribution. I then compute the estimated marginal means for this prior ony model using the *emmeans* function. 
+In order to get around the *Gamma* family bug, I need to set a prior-only model. Setting *prior_PD* as TRUE updates the original model but draws from the prior distribution. The *fit_sum_prior* object is equivalent to the *fit_sum* object but sampled from the priors. I then compute the estimated marginal means for this prior only model using the *emmeans* function. 
 
 ## Bayes factor for restricted model under contr.sum contrast
 
 ```{r resttriction for contr.sum contrast}
-
 bayesfactor_restricted(posterior = em_sum,
                        prior = em_sum_prior,
                        hypothesis = hyp_sum)
 ```
 
-Using the prior and posterior model, I can then calculate a Bayes factors for both of my restrictions.
+Using the prior and posterior model, I can then calculate a Bayes factors for both of my restrictions as the Bayes factor details the degree of change from prior to posterior odds.
 
-Automatically we can see an issue. Under the *contr.sum* contrast setting, prior probability odds are biased for some of restrictions. In this example, one of the orders is *a priori* more likely than the other. This will thus influence the Bayes factor and the conclusions that are made between alternative and null hypotheses.
+Automatically I can see an issue. Under the *contr.sum* contrast setting, prior probability odds are biased for some restrictions. In this example, one of the orders is *a priori* more likely than the other. This will thus influence the Bayes factor and the conclusions that are made between alternative and null hypotheses for these restrictions.
 
 ## Conclusions so far
 
-Thus far I have detailed how the default *contr.sum* setting can bias prior for diffrent restrictions. The example also explains how this is worsened under other contrast settings (*contr.treatment*). The only way around this is to compute orthogonal contrasts which are set via the *contr.bayes*.
+Thus far I have detailed how the default *contr.sum* setting can bias prior for diffrent restrictions. The online example also explains how this is worsened under other contrast settings (*contr.treatment*). The only way around this is to compute orthogonal contrasts which are set via the *contr.bayes*.
 
-According to the documentation (https://www.rdocumentation.org/packages/bayestestR/versions/0.4.0/topics/contr.bayes) the interpretation of the parameters becomes obscure when using this contrast. However it is essential for unbiased priors. 
+According to the documentation (https://www.rdocumentation.org/packages/bayestestR/versions/0.4.0/topics/contr.bayes) the interpretation of the parameters becomes obscure when using this contrast. However it is essential for unbiased priors when calculating Bayes factors for restriction models. 
 
 ## Fitting Bayesian model for contr.bayes contrast
 
@@ -128,7 +127,7 @@ I change the contrast setting to *contr.bayes*. Doing this allows for better inf
 em_bayes <- emmeans(fit_bayes, ~ heading)
 ```
 
-The *emmeans* function calculates the estimated margin means based upon the Bayesian model fit.
+The *emmeans* function calculates the estimated margin means based from the posterior distribution of the Bayesian model fit.
 
 ## Creating a prior model is get around a bug in the bayestestR package
 
@@ -139,12 +138,13 @@ em_bayes_prior <- emmeans(fit_bayes_prior, ~ heading)
 
 First I update the model and set *prior_PD* as TRUE. This generates samples from the prior distributions for my parameters (i.e. the levels of my heading factor). This means that the *fit_bayes_prior* object is the same as the *fit_bayes* - it just draws from the prior distribution rather than the posterior distribution.
 
-The *bayes_sum_prior* object is then the estimated marginal means based upon the prior Bayesian model fit. 
+The *em_bayes_prior* object is then the estimated marginal means based upon the prior Bayesian model fit. 
 
 ## Setting the hypotheses for the restriction model
 
 ```{r hypothesis}
-hyp <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`")
+hyp <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`",
+         "`0.5` > `2` & `0.5` > `1.5` & `0.5` > `1`")
 ```
 
 If parameters are numbers, they need to be surrounded by back ticks when formulating the hypothesis. 
@@ -157,6 +157,9 @@ bayesfactor_restricted(posterior = em_bayes,
                        hypothesis = hyp)
 ```
 
-I pass my prior estimates model for my priors arguement (as it is calculated from draws of the prior distributuon) and the orignal model as my posterior argument. Hence with both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
+I pass my prior estimates model for my priors arguement (as it is calculated from draws of the prior distribution) and the orignal model as my posterior argument. Hence with both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
 
-This reveals that the current data is 61.54 times more likely under the restriction model than under the un-restricted model. 
+This time, the difference between the priors is much smaller. The Bayes factors are much more reliable.
+
+In my case however, is unlikely that I will be comparing restrictions so this might not be necessary. 
+
