@@ -20,6 +20,7 @@ library(tidyr) # data manipulation
 library(ggplot2) # data vis
 library(BayesFactor) # performs Bayesian ANOVA
 library(rstanarm) # bayesian regression modelling
+library(brms) # bayesian modelling
 library(bayestestR) # describes Bayesian models and posterior distributions
 library(bayesplot) # allows plots for posterior predictive distributions
 library(loo) # Bayesian model comparison
@@ -111,39 +112,47 @@ Thus far, frequentist methods have revealed significnat main effects of dose and
 
 These conclusions are fair, and the correct analyses and corrections have been implemented. How do this compare with Bayesian equivalents?
 
-## Fitting Bayesian model - first way
+## Fitting Bayesian model
 
 ```{r fitting Bayesian model}
-fit_model <- stan_glm(len ~ supp * dose,
-                      family = gaussian(link = "identity"),
-                      adapt_delta = 0.999,
-                      data = ToothGrowth)
-
-fit_model
-```
-
-Here I fit a generalised linear model with gaussian family and identity link function because the residuals of this data are normally distributed. I fit this model using the normal formula notation which generates main effects of supplement and dose and a supplement x dose interaction. 
-
-# Fitting Bayesian model - stan example 
-
-```{r fitting Bayesian model - stan example}
 post1 <- stan_glm(len ~ 1, data = ToothGrowth, 
-                  family = gaussian(link = "identity"), 
-                  adapt_delta = 0.999)
+                  family = gaussian(link = "identity"))
 post2 <- update(post1, formula = . ~ supp)
 post3 <- update(post1, formula = . ~ dose)
 post4 <- update(post1, formula = . ~ supp + dose)
 (post5 <- update(post1, formula = . ~ supp * dose))
 ```
 
-This example is taken and adapted from here (http://mc-stan.org/rstanarm/articles/continuous.html#model-comparison). Here I fit a series of models:
+This example is taken and adapted from here (http://mc-stan.org/rstanarm/articles/continuous.html#model-comparison). Here I fit a series of models. I set the family as gaussian with identity link function because the residuals are normally distributed:
 
-- an intercept only model (when supplement and dose are 0, what is ToothGrowth length)
+- an intercept only model (when supplement and dose are 0, what is ToothGrowth length?). This acts as my "null" model.
 - one for each predictor variable (supplement and dose)
 - the two predictors combined
 - the interacton between the two predictors
 
-I fit one model at a time and update the model based upon the new formula. The benefit of this method is that I can use the "loo" package to perform a model comparison. This provides extra information regarding how which predictors predict the data and how they do so. 
+The benefit of this method is that I can use the "loo" package to perform a model comparison. This provides extra information regarding how and which predictors predict the data.
+
+## Model comparison
+
+```{r model compariosn for stan_glm models}
+# Compare them with loo
+loo1 <- loo(post1, cores = 2)
+loo2 <- loo(post2, cores = 2)
+loo3 <- loo(post3, cores = 2)
+loo4 <- loo(post4, cores = 2)
+loo5 <- loo(post5, cores = 2)
+(comp <- loo_compare(loo1, loo2, loo3, loo4, loo5))
+```
+
+This has been taken from the example here (http://mc-stan.org/rstanarm/articles/continuous.html#model-comparison).
+
+The *loo* and *loo_compare* functions allow me to compare the models. The *loo* method refers to the Leave-One-Out cross-validation. This method investigates the differences in predictive errors which is encapsulated by the *elpd_diff* (difference in predictive errors). 
+
+Columns within the matrix are computed by generating pairwise comparisons between each model and the model with highest ELPD (i.e. highest predictive accuracy). Model 5 appears to be the best model - this contains the the two main effects and the interaction. However model 4 (both predictors) is not too far behind. To further investigate this, we can compute Bayes factor comparisons between the models.
+
+
+
+
 
 ```{r Bayes facot comparison per model}
 comparison <- bayesfactor_models(post2, post3, post4, post5, denominator = post1)
