@@ -150,23 +150,49 @@ The *loo* and *loo_compare* functions allow me to compare the models. The *loo* 
 
 Columns within the matrix are computed by generating pairwise comparisons between each model and the model with highest ELPD (i.e. highest predictive accuracy). Model 5 appears to be the best model - this contains the the two main effects and the interaction. However model 4 (both predictors) is not too far behind. To further investigate this, we can compute Bayes factor comparisons between the models.
 
+## Bayes factor comparison between models
 
+```{r Bayes factor comparison between models}
 
+m1 <- brm(len ~ 1,
+          data = ToothGrowth,
+          family = gaussian(link = "identity"),
+          save_all_pars = TRUE)
 
+m2 <- brm(len ~ supp,
+          data = ToothGrowth,
+          family = gaussian(link = "identity"),
+          save_all_pars = TRUE)
 
-```{r Bayes facot comparison per model}
-comparison <- bayesfactor_models(post2, post3, post4, post5, denominator = post1)
-comparison
+m3 <- brm(len ~ dose,
+          data = ToothGrowth,
+          family = gaussian(link = "identity"),
+          save_all_pars = TRUE)
 
+m4 <- brm(len ~ supp + dose,
+          data = ToothGrowth,
+          family = gaussian(link = "identity"),
+          save_all_pars = TRUE)
+
+m5 <- brm(len ~ supp * dose,
+          data = ToothGrowth,
+          family = gaussian(link = "identity"),
+          save_all_pars = TRUE)
+
+comparison_v_intercept <- bayesfactor_models(m2, m3, m4, m5, denominator = m1)
+comparison_v_intercept
+
+comparison_v_interaction <- bayesfactor_models(m1, m2, m3, m4, denominator = m5)
+comparison_v_interaction
 ```
 
-## Model comparison
+The Bayes factor comparison between each model comes from the following example (https://easystats.github.io/bayestestR/articles/bayes_factors.html).
 
-```{r model comparison}
-# Compare them with loo
-loo1 <- loo(post1, cores = 2)
-loo2 <- loo(post2, cores = 2)
-loo3 <- loo(post3, cores = 2)
-loo4 <- loo(post4, cores = 2)
-(comp <- loo_compare(loo1, loo2, loo3, loo4))
-```
+First I fit the models using the *brms* package in order to extract the Bayes factors for model comparison. The first comparison is against the null (intercept only). This comparison shows that the data are all more likely (Bayes factors ranging from 29.63 to 9.18 x 10^17) under the comparison models than under the null model.
+
+I then focus on the interaction model. The loo model comparison demonstrated that it was the best model however model 4 (both predictors without the interacion) was not that different. When I compare the Bayes factors, I find that the data are all much less likely under the null and individual main effect models than for the model containing main effects and interactions. However the Bayes factors comparison indicate that the data is no more likely under the model including the interaction than without it.
+
+## Conclusions on Bayes factor model comparisons
+
+This final comparison between model 4 and 5 is of particular interest. It contrasts the frequentist analysis, whereby a significant interaction effect (albeit with a small effect size) is identified and thus interpretted. Under a Bayesian analysis framework, the data is no more likely under the model including the interaction than without it, thus indicating a lack of evidence for it's influence on the data. 
+
