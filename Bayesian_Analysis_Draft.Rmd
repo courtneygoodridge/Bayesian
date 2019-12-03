@@ -218,7 +218,7 @@ ggplot(data = posteriors) +
   geom_vline(xintercept = -.04, color = "black", size = 2) +
   geom_vline(xintercept = 0, color = "black", size = 2) +
   xlim(-.15, .15) +
-  xlab("standardised effect size")
+  xlab("standardised coefficient effect")
 
 # establishing the percentage of the HDIs within the ROPE interval
 percentage_in_rope_glm <- rope(fit_glm, ci = 1, range = c(-0.04, 0))
@@ -233,6 +233,8 @@ median(posteriors$heading3)
 ```
 The following is generated from the example given here (https://easystats.github.io/bayestestR/articles/example1.html)
 
+The Bayesian GLM demonstrates that for each contrast, heading level is having an negative on the outcome variable i.e. an increase in heading is generating a decrease in RT. However, the Bayesian method does not rely on statistical sigificance in order to understand whether an effect is interesting - instead, the posterior distribution generates a probabilistic view of certain parameters and their uncertainty i.e. the coefficient for certain contrasts. Rather than conclude that there is simply a difference from a point null (0) one method used in Bayesian analyses is to construct a ROPE. 
+
 ROPE stands for "region of practical equivalence". Comparing your alternative hypothesis to a single point null does not make much sense theoretically, as it is very likely there will be a difference (even if it is extremely small). I can define a ROPE which is an interval around a point null that is "practically equivalent" to it.
 
 Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0.1 (half of a small effect size) multiplied by the standard deviation of the outcome variable. Ordinarily this would generate a ROPE interval of [-0.02, 0.02]. 
@@ -241,7 +243,7 @@ However this refers to the a 2 tailed hypothesis. I can be more specific. I know
 
 I can then draw from the posterior distributions, plot the HDIs for each of my contrasts and indicate the median most credible value with a vertical line. This provides a nice literal interpretation 
 
-"*95% of the the most credible values for standardised effect size of my contrasts are not practically equivalent to the null*". 
+"*95% of the the most credible values for standardised coefficient effect of my contrasts are not practically equivalent to the null*". 
 
 **Sidenote** I get a warning of multicollinearity between 2 of my contrasts (heading1 and heading2). This likely due to my contrast matrix being linearly dependent. 
 
@@ -255,12 +257,13 @@ p_direction(posteriors)
 
 The *Probability of Direction* is a value that ranges from 50% to 100%. It is interpretted as the probability that a parameter is positive or negative. Mathematically it is defined as the percentage of the posterior distribition that is the same sign as the median. The *Probability of Direction* is indepedent of the model and computed from posterior draws. 
 
-It does not detail the magnitude or importance of an effect - rather that an effect is positive and negative and waht the probability of that is. 
+It does not detail the magnitude or importance of an effect - rather the probability that an effect is positive and negative. In this respect, it is directly relatable to the frequentist p value. 
 
 For more information see:
 
 (https://easystats.github.io/bayestestR/articles/probability_of_direction.html#methods-comparison)
 (https://easystats.github.io/bayestestR/reference/p_direction.html#arguments)
+
 ## Posterior predictive distributions
 
 ```{r posterior predictive distribution}
