@@ -132,9 +132,88 @@ This example is taken and adapted from here (http://mc-stan.org/rstanarm/article
 
 The benefit of this method is that I can use the "loo" package to perform a model comparison. This provides extra information regarding how and which predictors predict the data.
 
+## Plotting individual main effects
+
+```{r main effects}
+# main effect of supplement
+draws <- as.data.frame(post2)
+colnames(draws)[1:2] <- c("a", "b")
+
+ggplot(ToothGrowth, aes(x = supp, y = len)) + 
+  geom_jitter(size = 1) +
+  geom_abline(data = draws, aes(intercept = a, slope = b),
+              color = "skyblue", size = 0.2, alpha = 0.1) +
+  geom_abline(intercept = coef(post2)[1], slope = coef(post2)[2],
+              color = "skyblue4", size = 1) +
+  ggtitle("Main effect of supplement")
+
+# main effect of dose
+draws <- as.data.frame(as.matrix(post3))
+colnames(draws)[1:2] <- c("a", "b")
+
+ggplot(ToothGrowth, aes(x = dose, y = len)) + 
+  geom_jitter() +
+  geom_abline(data = draws, aes(intercept = a, slope = b), 
+              color = "skyblue", size = 0.2, alpha = 0.25) + 
+  geom_abline(intercept = coef(post3)[1], slope = coef(post3)[2], 
+              color = "skyblue4", size = 1) +
+  ggtitle("Main effect of dose")
+
+```
+These were taken and modified from the following exmaple (http://mc-stan.org/rstanarm/articles/continuous.html#posterior)
+
+Here I plot the two main effects - dose and supplement. The regression line is plotted directtly from the Bayesian model estimates and indicates the best fit from the posterior distribuion. Uncertainty is indicated by plotting regression lines at each draw from the posterior distribution. This means it takes an intercept and slope coefficient from the posterior distribution and plots them alongside the best estimate. 
+
+## Plotting combined main effects (with subpopulations)
+
+```{r combined main effects }
+reg0 <- function(x, ests) cbind(1, 0, x) %*% ests 
+reg1 <- function(x, ests) cbind(1, 1, x) %*% ests
+
+args <- list(ests = coef(post4))
+lgnd <- guide_legend(title = NULL)
+
+ggplot(ToothGrowth, aes(x = dose, fill = relevel(supp, ref = "OJ"))) + 
+  geom_jitter(aes(y = len), shape = 21, stroke = .2, size = 2) + 
+  guides(color = lgnd, fill = lgnd) + 
+  theme(legend.position = "right") +
+  stat_function(fun = reg0, args = args, aes(color = "OJ"), size = 1.5) +
+  stat_function(fun = reg1, args = args, aes(color = "VC"), size = 1.5)
+
+```
+These were taken and modified from the following exmaple (http://mc-stan.org/rstanarm/articles/continuous.html#posterior)
+
+Here I plot the main effects of dose and supplement together on the same plot. *reg0* and *reg1* refer to the different regressions. I use these within the *stat_function* function. The *stat_function* calculates the regression line for each supplement with regard to the dose factor. The *args* variable provides the intercept and slope coefficient for each  of these lines. 
+
+This graph visualises the main effect of dose (i.e. as dose increases, tooth growth increases). It also shows the main effect of supplement (i.e. the orange juice regression line is above the vitamin C line, thus generating higher growth).
+
+## Plotting the interaction
+
+```{r interaction}
+reg0 <- function(x, ests) cbind(1, 0, x, 0 * x) %*% ests 
+reg1 <- function(x, ests) cbind(1, 1, x, 1 * x) %*% ests
+args <- list(ests = coef(post5))
+
+ggplot(ToothGrowth, aes(x = dose, fill = relevel(supp, ref = "OJ"))) + 
+  geom_jitter(aes(y = len), shape = 21, stroke = .2, size = 2) + 
+  guides(color = lgnd, fill = lgnd) + 
+  theme(legend.position = "right") +
+  stat_function(fun = reg0, args = args, aes(color = "OJ"), size = 1.5) + 
+  stat_function(fun = reg1, args = args, aes(color = "VC"), size = 1.5)
+```
+These were taken and modified from the following exmaple (http://mc-stan.org/rstanarm/articles/continuous.html#posterior)
+
+Finally, this graph plots the interaction model for supplement and dose. It visualises that for lower doses, orange juice clearly has more of an effect on tooth growth. However as dose increases, the difference between orange juice and vitamin C decreases. However orange juice still appears to have an increased effect on tooth growth even for the highest dose in this study.
+
+In order to fully invetsigate this interaction, I will have to perform some model comparisons - this will take the form of:
+
+- Leave-one-out validation from the *loo* package.
+- Bayes factors for model comparison
+- Restriction models for  main effects 
+
 ## Model comparison
 
-```{r model compariosn for stan_glm models}
+```{r model comparison for stan_glm models}
 # Compare them with loo
 loo1 <- loo(post1, cores = 2)
 loo2 <- loo(post2, cores = 2)
@@ -263,8 +342,3 @@ Now that I have established that the main effect of dose indicates a lot of evid
 First I update the dose main effect model with the correct contrast settings to alleviate biased priors. Then set my hypotheses. This involves two restrictions as the main effect is regardless of supplement factor.
 
 The restriction model reveals that the data are 6 times more likely under either restrictionvs the un-restricted model. This acts as substantial evidence versus the unrestricted model and indicates that as the dose increases, tooth growth increases. 
-
-
-##TO DO
-- Plot stan_glm model using ggplot (http://mc-stan.org/rstanarm/articles/continuous.html#model-comparison)
-- Read Bayesian stats paper
