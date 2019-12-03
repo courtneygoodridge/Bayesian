@@ -157,9 +157,8 @@ bayesfactor_restricted(posterior = em_bayes,
                        hypothesis = hyp)
 ```
 
-I pass my prior estimates model for my priors arguement (as it is calculated from draws of the prior distribution) and the orignal model as my posterior argument. Hence with both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
+Usually the *bayesfactor_restricted* function draws the prior probabilities from the *stan_glm* object. However, there is a bug with the Gamma distribution family in the bayestestR package. In order to get around this, I need to fit a prior only model using the prior predictive distribution. I then calculate estimated marginal means for this prior only model. I pass prior estimates as my priors arguement (as it is calculated from draws of the prior distribution) and the estimates from the orignal model as my posterior argument. With both prior and posteriors set, I can compute a Bayes factor (the degree of change from prior to posterior odds) based on my hypothesis.
 
 This time, the difference between the priors is much smaller. The Bayes factors are much more reliable.
 
 In my case however, is unlikely that I will be comparing restrictions so this might not be necessary. 
-
