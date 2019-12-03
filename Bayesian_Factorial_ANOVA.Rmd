@@ -205,7 +205,7 @@ Finally, the data are 1 times more likely under the alternative interaction mode
 
 ## Conclusions on Bayes factor model comparisons
 
-This final comparison between model 4 and 5  and the Bayes factor for the interatcion within model 5 are of particular interest. It contrasts the frequentist analysis, whereby a significant interaction effect (albeit with a small effect size) is identified and thus interpretted. Under a Bayesian analysis framework, the data is no more likely under the model including the interaction than without it, thus indicating a lack of evidence for it's influence on the data. 
+This final comparison between model 4 and 5  and the Bayes factor for the interatcion within model 5 are of particular interest. It contrasts the frequentist analysis, whereby a significant interaction effect (albeit with a small effect size) is identified and thus interpretted. Under a Bayesian analysis framework, the data is no more likely under the model including the interaction than without it, thus indicating a lack of evidence for it's influence on the data. Perhaps if there were more levels to the dose factor i.e. a 1.5mg dose then it would be easier to see the interaction effect. This comes down to a poorly design experiment and thus because of this, the Bayesian analysis leads us to be wary of the interaction effects. 
 
 ## Investigating main effects of supplement and dose - 95% HDIs
 
@@ -258,13 +258,13 @@ bayesfactor_restricted(posterior = em_dose,
                        hypothesis = hyp_dose)
 ```
 
-To further investigate the main effects, I implement a restriction model. Specifically for dose, I am likely to have some a priori expectations of the direction of the effect i.e. higher doses of vitamins lead to increased tooth growth. First I update the dose main effect model with the correct contrast settings to alleviate biased priors.
+Now that I have established that the main effect of dose indicates a lot of evidence versus the null, I can implement a restriction model. To further investigate the main effects, I implement a restriction model. I am likely to have some a priori expectations of the direction of the effect i.e. higher doses of vitamins lead to increased tooth growth. 
 
-The restriction model reveals that the data are 6 times more likely under the restriction models vs the un-restricted model. This is over 3 and thus acts as substantial evidence versus the unrestricted model. 
+First I update the dose main effect model with the correct contrast settings to alleviate biased priors. Then set my hypotheses. This involves two restrictions as the main effect is regardless of supplement factor.
+
+The restriction model reveals that the data are 6 times more likely under either restrictionvs the un-restricted model. This acts as substantial evidence versus the unrestricted model and indicates that as the dose increases, tooth growth increases. 
 
 
 ##TO DO
-
-- Finish writing up main effects analyse for dose and supplement
 - Plot stan_glm model using ggplot (http://mc-stan.org/rstanarm/articles/continuous.html#model-comparison)
 - Read Bayesian stats paper
