@@ -223,7 +223,6 @@ I then save the new model as a dataframe. This gives me access to the prior dist
 
 One commment that I could make is that I am using a prior that is too wide. The distribution I am using is normal but the scale is 10. It is unlikely that my effect will be this large and the setting of priors influences the Bayes factor. 
 
-
 ## Investigating posterior distributions and ROPE intervals for each contrast
 
 ```{r ROPE intervals and drawing from posterior distributions}
@@ -312,11 +311,17 @@ bf_glm <- bayesfactor_parameters(fit_glm, null = c(-.04, 0))
 bf_glm
 
 ```
+
+
+This is based upon the example given here (https://easystats.github.io/bayestestR/articles/bayes_factors.html#testing-models-parameters-with-bayes-factors)
+
 I can compute my Bayes factor for each contrast. This also allows me to compute my Bayes factor for the alternative hypothesis versus the ROPE interval null hypothesis, rather than a point null. This demonstrates substantial evidence for the alternative hypotheses for each contrast.
 
 Ideally, I would also implement a contrast where I am comparing: *0.5 > 1.0 > 1.5 > 2.0* but as explained above, I'm unsure how to implement that within the contrast matrix (**see Bayesian_restriction markdown for how to do this**. 
 
-This is based upon the example given here (https://easystats.github.io/bayestestR/articles/bayes_factors.html#testing-models-parameters-with-bayes-factors)
+## Restriction Bayesian model
+
+
 
 ## Bayesian GLM model with lognormal family and model comparison
 
