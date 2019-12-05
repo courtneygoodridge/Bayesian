@@ -36,8 +36,8 @@ library(emmeans) # marginal mean from Bayesian model
 ```{r load my data}
 # rm(list = ls()) - clear global environment
 # home working directory
-# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_Code/experiment_1")
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_Code/experiment_1")
+# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
@@ -138,7 +138,23 @@ em_bayes_prior <- emmeans(fit_bayes_prior, ~ heading)
 
 First I update the model and set *prior_PD* as TRUE. This generates samples from the prior distributions for my parameters (i.e. the levels of my heading factor). This means that the *fit_bayes_prior* object is the same as the *fit_bayes* - it just draws from the prior distribution rather than the posterior distribution.
 
-The *em_bayes_prior* object is then the estimated marginal means based upon the prior Bayesian model fit. 
+The *em_bayes_prior* object is then the estimated marginal means based upon the prior Bayesian model fit.
+
+## Visualising prior and posterior distributions
+
+```{r visualising distributions}
+posteriors <- insight::get_parameters(fit_bayes)
+
+priors <- as.data.frame(fit_bayes_prior)
+
+ggplot() +
+  geom_density(data = priors, aes(x = heading1)) +
+
+ggplot() +
+  geom_density(data = posteriors, aes(x = heading1))
+
+```
+
 
 ## Setting the hypotheses for the restriction model
 

@@ -203,7 +203,28 @@ My Rhat values suggest the model succesfully converged.
 
 *mean_ppd* in the estimates table can be used as a heuristic for how well the model describes the data. This value represents a best guess of the *mean posterior predicitive distribution* (distribution of simiulated data based on current data). Ideally this should be equal to the mean of my outcome variable (RT). In this case, the values are similar.
 
-## ROPE intervals 
+### Investigating prior distributions for each contrast
+
+```{r summaring prior distributions}
+fit_glm_prior <- update(fit_glm, prior_PD = TRUE)
+
+priors <- as.data.frame(fit_glm_prior)
+
+ggplot(data = priors) +
+  geom_density(aes(x = heading1), fill = "red", alpha = 0.1) +
+  geom_density(aes(x = heading2), fill = "orange", alpha = 0.1) +
+  geom_density(aes(x = heading3), fill = "blue", alpha = 0.1) +
+  ggtitle("Prior distributions for each heading contrast")
+```
+
+When I fit the Bayesian GLM I do not specify a prior. This is because I am not sure of the effect that I might find. Thus the stan_glm model generates a vaguely informative prior for each contrast. In order to visualise this, I first update the model (*fit_glm*) and set *prior_PD* as TRUE. This saves samples from the prior distribution. Thus *fit_glm_prior* and *fit_glm* are the save objects put the first samples from the priors and the latter from the posterior distribution.
+
+I then save the new model as a dataframe. This gives me access to the prior distributions for the coefficients for all 3 of my contrasts. I then plot these to demonstrate that each contrast has a vaguely informative prior distribution. 
+
+One commment that I could make is that I am using a prior that is too wide. The distribution I am using is normal but the scale is 10. It is unlikely that my effect will be this large and the setting of priors influences the Bayes factor. 
+
+
+## Investigating posterior distributions and ROPE intervals for each contrast
 
 ```{r ROPE intervals and drawing from posterior distributions}
 posteriors <- insight::get_parameters(fit_glm)
