@@ -317,9 +317,28 @@ This is based upon the example given here (https://easystats.github.io/bayestest
 
 I can compute my Bayes factor for each contrast. This also allows me to compute my Bayes factor for the alternative hypothesis versus the ROPE interval null hypothesis, rather than a point null. This demonstrates substantial evidence for the alternative hypotheses for each contrast.
 
-Ideally, I would also implement a contrast where I am comparing: *0.5 > 1.0 > 1.5 > 2.0* but as explained above, I'm unsure how to implement that within the contrast matrix (**see Bayesian_restriction markdown for how to do this**. 
-
 ## Restriction Bayesian model
+
+```{r restriction model}
+contrasts(magnitudedata$heading) <- "contr.bayes"
+
+fit_bayes <- stan_glm(FirstSteeringTime ~ heading,
+                      family = Gamma(link ="identity"),
+                      adapt_delta = 0.999,
+                      data = magnitudedata)
+
+em_bayes <- emmeans(fit_bayes, ~ heading)
+fit_bayes_prior <- update(fit_bayes, prior_PD = TRUE)
+em_bayes_prior <- emmeans(fit_bayes_prior, ~ heading)
+
+hyp <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`")
+
+bayesfactor_restricted(posterior = em_bayes,
+                       prior = em_bayes_prior,
+                       hypothesis = hyp)
+```
+
+Thus far I have computed Bayes factors for each of my contrasts. However I can be more specific as I know the direct of my effect (increased heading leads to a decrease in RTs). Thus I can implement a restriction model and calculate a Bayes factor versus an unrestricted model i.e. just differences between my heading levels. The details of this code chunk can be found in the *Bayesian_restriction.Rmd* markdown file.
 
 ## Bayesian GLM model with lognormal family and model comparison
 

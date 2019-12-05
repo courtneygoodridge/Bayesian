@@ -140,22 +140,6 @@ First I update the model and set *prior_PD* as TRUE. This generates samples from
 
 The *em_bayes_prior* object is then the estimated marginal means based upon the prior Bayesian model fit.
 
-## Visualising prior and posterior distributions
-
-```{r visualising distributions}
-posteriors <- insight::get_parameters(fit_bayes)
-
-priors <- as.data.frame(fit_bayes_prior)
-
-ggplot() +
-  geom_density(data = priors, aes(x = heading1)) +
-
-ggplot() +
-  geom_density(data = posteriors, aes(x = heading1))
-
-```
-
-
 ## Setting the hypotheses for the restriction model
 
 ```{r hypothesis}
