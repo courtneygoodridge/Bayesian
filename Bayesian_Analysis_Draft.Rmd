@@ -321,8 +321,6 @@ Ideally, I would also implement a contrast where I am comparing: *0.5 > 1.0 > 1.
 
 ## Restriction Bayesian model
 
-
-
 ## Bayesian GLM model with lognormal family and model comparison
 
 ```{r model comparison using the loo package, message = FALSE, warning = FALSE}
