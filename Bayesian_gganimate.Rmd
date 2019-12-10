@@ -1,0 +1,88 @@
+---
+title: "bayesain_gganimate"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages
+
+```{r}
+library(rstanarm)
+library(ggplot2)
+library(gganimate)
+library(dplyr)
+library(tidyr)
+library(transformr)
+library(gifski)
+library(bayestestR)
+library(see)
+library(insight)
+library(devtools)
+install_github("easystats/estimate")
+library(magick)
+```
+
+## Create example data
+
+```{r}
+true_effect <- 0.5
+prior_width <- 0.333
+max_n <- 10
+
+
+data <- bayestestR::simulate_correlation(n=max_n, r=true_effect)
+vizmatrix <- estimate::visualisation_matrix(data["V2"])
+
+# Initialize empty dataframes
+priors <- data.frame()
+posteriors <- data.frame()
+params <- data.frame()
+prediction <- data.frame()
+correlation_data <- data.frame()
+for(i in 5:nrow(data)){
+  print(i)
+
+  # Get data
+  current_data <- data[1:i,]
+  current_data$Evidence <- i
+  correlation_data <- rbind(correlation_data, current_data)
+
+  # Model and make predictions
+  model <- rstanarm::stan_glm(V1 ~ V2,
+                              prior = normal(0, prior_width),
+                              data=current_data,
+                              refresh = 0,
+                              iter=10000,
+                              chains=4,
+                              warmup=4000)
+
+
+  current_prediction <- estimate::estimate_link(model, length=50, data=vizmatrix, keep_draws=FALSE, draws=10)
+  current_prediction$Evidence <- i
+  prediction <- rbind(prediction, current_prediction)
+
+  # Parameters
+  posterior <- insight::get_parameters(model)$V2
+  param <- bayestestR::describe_posterior(model, test=c("pd", "ROPE", "p_MAP"), rope_ci = 1)[2,]
+  param$BF_null <- bayestestR::bayesfactor_parameters(model, verbose = FALSE)[2, "BF"]
+  #param$BF_ROPE <- bayestestR::bayesfactor_rope(model, verbose = FALSE)[2, "BF"]
+
+  param$Max <- bayestestR::density_at(posterior, median(posterior), method="KernSmooth")
+  param$Evidence <- i
+  params <- rbind(params, param)
+
+  # Prior and posterior
+  posterior <- bayestestR::estimate_density(posterior, method="KernSmooth")
+  posterior$Evidence <- i
+  posteriors <- rbind(posteriors, posterior)
+
+  prior <- bayestestR::estimate_density(bayestestR::distribution_normal(1000, 0, prior_width), method="KernSmooth")
+  prior$Evidence <- i
+  priors <- rbind(priors, prior)
+}
+
+
+```
