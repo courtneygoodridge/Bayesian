@@ -1,0 +1,56 @@
+---
+title: "Estimating effect sizes for Bayesian models"
+output: html_document
+---
+
+This R markdown will specify how to compute the effect sizes of Bayesian models. The first part will utilise the PlantGrowth data frame. I will then implement my own. I will utilise the rstanarm package. I will be following examples from the following online resource: (https://easystats.github.io/effectsize/articles/bayesian_models.html)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages
+
+```{r}
+library(dplyr) # data manipulation
+library(tidyr) # data manipulation
+library(ggplot2) # data vis
+library(BayesFactor) # performs Bayesian ANOVA
+library(rstanarm) # bayesian regression modelling
+library(bayestestR) # describes Bayesian models and posterior distributions
+library(bayesplot) # allows plots for posterior predictive distributions
+library(loo) # Bayesian model comparison
+library(arm) # computes Bayes factor for glm model
+library(insight) # get posterior parameters 
+library(fitdistrplus) # checking distribution
+```
+
+## Load data
+
+```{r}
+data("PlantGrowth")
+```
+
+Obtaining indices of effect for Bayesian models is currently an issue, but it can be done to an extent via one of two methods:
+
+1) To compute standardised parameters.
+2) To compute effect sizes via test statistic approximations.
+
+## Implement contrasts and finding out distribution of data 
+
+```{r}
+descdist(PlantGrowth$weight, discrete = FALSE)
+
+contrasts(PlantGrowth$group)
+
+# setting my own contrasts - better addresses my research question
+contrastmatrix <- cbind(c(-1, 1, 0), c(-1, 0, 1))
+
+contrasts(PlantGrowth$group) <- contrastmatrix
+
+contrasts(PlantGrowth$group)
+```
+
+Firstly I investigate the distribution of the data. This a quick and dirty way of doing this, but the descdist() function compares skewness and kurtosis of the data to different distributions. The cloest the data falls, the closer the fit of the data. Here is is very close to a normal distribution thus I can use the Gaussian family in my Bayesian model. 
+
+I then set my contrasts. Because I have a control condition and 2 treatment conditions, I set my contrast matrix comparing the treatments to the control condition. 
