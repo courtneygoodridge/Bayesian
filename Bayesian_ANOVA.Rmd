@@ -3,9 +3,14 @@ title: "Bayesian ANOVA"
 output: html_document
 ---
 
+
+This R markdown file specifies how to compute a Bayesian ANOVA using the BayesFactor package. This also allows for restriction models for the alternative versus the null and full model. This analysis is probably not suitable for my data because this analysis still requires normally distributed residuals - my RT data is not normally distributed. 
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Load packages
 
 ```{r load packages}
 # rm(list = ls())
@@ -16,6 +21,8 @@ library(ggplot2) # data vis
 library(BayesFactor) # performs Bayesian ANOVA
 
 ```
+
+## Load data
 
 ```{r load data}
 
@@ -28,6 +35,8 @@ magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CS
 ```
 
 Load magnitude data
+
+## Compute the Bayesian ANOVA
 
 ```{r Bayesian ANOVA}
 
@@ -63,6 +72,8 @@ Bayes factors however provide a viable alternative. This will allow us to comput
 
 The Bayes factor is the degree of change from prior to posterior odds. Hence if we can compute this, we can compute the Bayes factor. The prior odds have equal probability across factor levels. With 4 factors, the prior odds are 1/8 as there are 8 orderings.
 
+## Sampling from the posterior distribution
+
 ```{r sample from the posterior distribution}
 
 samples <-  posterior(bf, iterations = 10000)
@@ -71,6 +82,8 @@ head(samples)
 ```
 
 The posterior function allows us to sample from the posterior distribution a number of times.
+
+## Plotting posterior distributions
 
 ```{r plotting posterior distributions of the factor level effects}
 
@@ -84,6 +97,8 @@ plot(samples[,4:5])
 
 These plots illustrate posterior distribution draws for each of the heading condition.
 
+## Performing order constraint model
+
 ```{r form the order constraints}
 
 ## Check order constraint
@@ -96,6 +111,8 @@ N_consistent = sum(consistent)
 
 We then construction the order constraints, whereby we expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1. The *consistent* variables checks that the order constraint is true and the *n_consistent* variable counts the number of consistent order constraints from the sampled posterior.  
 
+## Restriction model versus the model
+
 ```{r restriction versus full model}
 
 bf_restriction_against_full = (N_consistent / 4000) / (1 / 8)
@@ -106,6 +123,8 @@ bf_restriction_against_full
 The posterior probability is the number of consistent order constraints from the posterior (*n_consistent*) divided by the number of samples (10000). Then we divide the posterior by the prior distribution probabilites to get the Bayes factor of the restriction model versus the full model.
 
 We generate a Bayes factor of 8. Hence the data is 8 times more likely under the restriction model than under the full model.
+
+## Restriction model versus the null model
 
 ```{r restriction versus the null model}
 
