@@ -3,7 +3,23 @@ title: "Estimating effect sizes for Bayesian models"
 output: html_document
 ---
 
-This R markdown will specify how to compute the effect sizes of Bayesian models. The first part will utilise the iris dataframe from the example. I will then practice on the PlantGrowth dataframe. Finally, I will then implement on my own data. I will utilise the rstanarm package. I will be following examples from the following online resource: (https://easystats.github.io/effectsize/articles/bayesian_models.html)
+This R markdown will specify how to compute the effect sizes of Bayesian models. The first part will utilise the iris dataframe from the online example. I will then investigate how to standardise my coefficients in order to use effect size guidelines for my contrasts. I will utilise the rstanarm package. I will be following examples from the following online resources:
+
+Effect sizes for Bayesian models:
+(https://easystats.github.io/effectsize/articles/bayesian_models.html)
+
+Parameter standardisation function:
+(https://easystats.github.io/effectsize/reference/standardize_parameters.html#details)
+(https://easystats.github.io/effectsize/articles/standardize_parameters.html#standardized-differences)
+(https://easystats.github.io/effectsize/articles/interpret.html)
+
+
+Obtaining indices of effect for Bayesian models is currently an issue, but it can be done to an extent via one of two methods:
+
+1) To compute standardised parameters.
+2) To compute effect sizes via test statistic approximations.
+
+I will use the iris data set to compute examples for test statistic approximation, and and my own data set for computing standardised parameters.
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -25,72 +41,71 @@ library(arm) # computes Bayes factor for glm model
 library(insight) # get posterior parameters 
 library(fitdistrplus) # checking distribution
 library(effectsize) # for computing Bayesian model effect sizes 
+library(parameters)
 ```
 
-## Load data
+## Load iris data
 
 ```{r}
 data("iris")
-data("PlantGrowth")
 ```
 
-Obtaining indices of effect for Bayesian models is currently an issue, but it can be done to an extent via one of two methods:
-
-1) To compute standardised parameters.
-2) To compute effect sizes via test statistic approximations.
-
-## Implement contrasts and finding out distribution of data 
+## Frequentist mulitple regression example
 
 ```{r}
-descdist(PlantGrowth$weight, discrete = FALSE)
-
-contrasts(PlantGrowth$group)
-
-# setting my own contrasts - better addresses my research question
-contrastmatrix <- cbind(c(-1, 1, 0), c(-1, 0, 1))
-
-contrasts(PlantGrowth$group) <- contrastmatrix
-
-contrasts(PlantGrowth$group)
-```
-
-Firstly I investigate the distribution of the data. This a quick and dirty way of doing this, but the descdist() function compares skewness and kurtosis of the data to different distributions. The cloest the data falls, the closer the fit of the data. Here is is very close to a normal distribution thus I can use the Gaussian family in my Bayesian model. 
-
-I then set my contrasts. Because I have a control condition and 2 treatment conditions, I set my contrast matrix comparing the treatments to the control condition. 
-
-## Fitting Bayesian model
-
-```{r}
-
-model <- stan_glm(weight ~ group,
-                  prior = cauchy(),
-                  family = gaussian(),
-                  adapt_delta = 0.999,
-                  data = PlantGrowth)
-
-model
-```
-
-I fit the Bayesian generalised linear model with gaussian family (because the data are normally distributed). 
-
-## Computing effect size estimates for Bayesian model
-
-```{r}
-
-
 df <- iris[, 1:4]  # Remove the Species factor
 
 model <- lm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, data = df) 
+
 parameters <- model_parameters(model)[2:4,]
 convert_t_to_r(parameters$t, parameters$df_residual)
+```
+First I remove species factor from the iris dataframe.
 
+For frequentist methods, the aim is to generate a coefficient that matches the partial correlations. Partial correlations are between 2 continuous variables whilst controlling for other variables. Thus we are able to see the direct effect of a variable upon another. In order to do this, I extract the parameters from the multiple regression model and convert the t statistics to a correlation.
 
+Partial correlations range from -1 (perfect negative linear relationship with continuous variable) or +1 (perfect positive linear relationship with continuous variable). 
 
+## Bayesian multiple regression example
 
-r <- convert_posteriors_to_t(model)
+```{r}
+model_bayes <- stan_glm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, data = df)
 
-bayestestR::describe_posterior(r)$Median[2:4]
+parameters <- model_parameters(model)[2:4,]
+convert_t_to_r(parameters$t, parameters$df_residual)
+```
+
+The Bayesian alternative estimates the posterior partial correlations by approximating the t statistic for each variable. This is done by dividing the coefficient by the standard deviation of the posterior. This is a hybrid method how it seems to match the linear multiple regression output.
+
+## Conclusions
+
+Test statistic approixmation works well for multiple regression models, however I am applying contrasts between levels of my indepedent variables. Thus being able to standardise these coefficients would generate effect size estimates for each of my contrasts. 
+
+## Load in experiment 1 data
+
+```{r}
+# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
+myfiles = lapply(temp, read.csv) # read these CSV in the directory
+magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
+```
+
+## Implement contrasts and fit Bayesian model
+
+```{r}
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+# default contrasts - orthogonal
+contrasts(magnitudedata$heading)
+
+# setting my own contrasts - better addresses my research question
+contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
+
+contrasts(magnitudedata$heading) <- contrastmatrix
+
+contrasts(magnitudedata$heading)
 
 ```
 
-For 
+For the purpose of this example I have left the default contrasts as they are. This means that each heading is contrasted against zero, thus I'll compute the pure effects of just that heading without contrasting against others. I could implement a contrast matrix and compute effect sizes for different contrasts but I won't for now. 
