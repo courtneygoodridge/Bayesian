@@ -91,7 +91,7 @@ myfiles = lapply(temp, read.csv) # read these CSV in the directory
 magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
 ```
 
-## Implement contrasts and fit Bayesian model
+## Fitting Bayesian model
 
 ```{r}
 magnitudedata$heading <- as.factor(magnitudedata$heading)
@@ -99,13 +99,33 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 # default contrasts - orthogonal
 contrasts(magnitudedata$heading)
 
-# setting my own contrasts - better addresses my research question
-contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
-
-contrasts(magnitudedata$heading) <- contrastmatrix
-
-contrasts(magnitudedata$heading)
-
+my_model_bayes <- stan_glm(FirstSteeringTime ~ heading,
+                           family = gaussian("log"),
+                           adapt_delta = 0.999,
+                           data = magnitudedata)
 ```
 
 For the purpose of this example I have left the default contrasts as they are. This means that each heading is contrasted against zero, thus I'll compute the pure effects of just that heading without contrasting against others. I could implement a contrast matrix and compute effect sizes for different contrasts but I won't for now. 
+
+## Standardising posteriors
+
+```{r}
+standard_my_model_bayes <- standardize_posteriors(my_model_bayes,
+                                                  method = "smart",
+                                                  robust = TRUE)
+
+posteriors <- insight::get_parameters(my_model_bayes)
+```
+
+The *standardize_posteriors* function standardises the coefficients of the model that is inputted. There are many methods that can be used to compute the standardisation. Specifics can be found here:
+(https://easystats.github.io/effectsize/reference/standardize_parameters.html#details)
+
+*posthoc*
+posthoc method might be best to use if I do not change headings to factor and just investigate the effect of heading overall.
+
+*smart*
+smart method will create effect sizes similar to Glass' Delta because the SD of the intercept is used. Apparently this effect size should be used if the standard deviations sig different (https://www.statisticshowto.datasciencecentral.com/glasss-delta/). Investigate how to work out how difference SDs are. 
+
+*basic*
+basic treat all variables as continuous 
+
