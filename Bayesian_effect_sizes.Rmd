@@ -3,7 +3,7 @@ title: "Estimating effect sizes for Bayesian models"
 output: html_document
 ---
 
-This R markdown will specify how to compute the effect sizes of Bayesian models. The first part will utilise the PlantGrowth data frame. I will then implement my own. I will utilise the rstanarm package. I will be following examples from the following online resource: (https://easystats.github.io/effectsize/articles/bayesian_models.html)
+This R markdown will specify how to compute the effect sizes of Bayesian models. The first part will utilise the iris dataframe from the example. I will then practice on the PlantGrowth dataframe. Finally, I will then implement on my own data. I will utilise the rstanarm package. I will be following examples from the following online resource: (https://easystats.github.io/effectsize/articles/bayesian_models.html)
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Load packages
 
 ```{r}
+# rm(list = ls())
 library(dplyr) # data manipulation
 library(tidyr) # data manipulation
 library(ggplot2) # data vis
@@ -23,11 +24,13 @@ library(loo) # Bayesian model comparison
 library(arm) # computes Bayes factor for glm model
 library(insight) # get posterior parameters 
 library(fitdistrplus) # checking distribution
+library(effectsize) # for computing Bayesian model effect sizes 
 ```
 
 ## Load data
 
 ```{r}
+data("iris")
 data("PlantGrowth")
 ```
 
@@ -54,3 +57,40 @@ contrasts(PlantGrowth$group)
 Firstly I investigate the distribution of the data. This a quick and dirty way of doing this, but the descdist() function compares skewness and kurtosis of the data to different distributions. The cloest the data falls, the closer the fit of the data. Here is is very close to a normal distribution thus I can use the Gaussian family in my Bayesian model. 
 
 I then set my contrasts. Because I have a control condition and 2 treatment conditions, I set my contrast matrix comparing the treatments to the control condition. 
+
+## Fitting Bayesian model
+
+```{r}
+
+model <- stan_glm(weight ~ group,
+                  prior = cauchy(),
+                  family = gaussian(),
+                  adapt_delta = 0.999,
+                  data = PlantGrowth)
+
+model
+```
+
+I fit the Bayesian generalised linear model with gaussian family (because the data are normally distributed). 
+
+## Computing effect size estimates for Bayesian model
+
+```{r}
+
+
+df <- iris[, 1:4]  # Remove the Species factor
+
+model <- lm(Sepal.Length ~ Sepal.Width + Petal.Length + Petal.Width, data = df) 
+parameters <- model_parameters(model)[2:4,]
+convert_t_to_r(parameters$t, parameters$df_residual)
+
+
+
+
+r <- convert_posteriors_to_t(model)
+
+bayestestR::describe_posterior(r)$Median[2:4]
+
+```
+
+For 

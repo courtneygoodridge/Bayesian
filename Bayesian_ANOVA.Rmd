@@ -4,7 +4,7 @@ output: html_document
 ---
 
 
-This R markdown file specifies how to compute a Bayesian ANOVA using the BayesFactor package. This also allows for restriction models for the alternative versus the null and full model. This analysis is probably not suitable for my data because this analysis still requires normally distributed residuals - my RT data is not normally distributed. 
+This R markdown file specifies how to compute a Bayesian ANOVA using the *BayesFactor* package. This also allows for restriction models for the alternative versus the null and full model. This analysis is probably not suitable for my data because this analysis still requires normally distributed residuals - my RT data is not normally distributed. 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)

@@ -9,7 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This markdown document is my first attempt at writing up a Bayesian analysis of my data. The data I am using is from experiment 1. For this example, I will be investigating how heading angle affects RTs. For a reminder, both Threshold and Accumulator models propose reduced RTs as heading increases.
 
-Firstly I analyse my data using a Bayesian ANOVA from the BayesFactor package. I then go on to use the rstanarm package to fit Bayesian generalised linear models to my data.
+I am using the *rstanarm* package to fit a Bayesian generalised linear models to my data. I then compute Bayes factor for the full model contrasts, Bayes factors for the restricted model, invetsigate 95% HDIs, use the HDI + ROPE for inference and the probability of direction.
 
 ## Load packages 
 
@@ -38,99 +38,6 @@ temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
 ```
-
-## Computing Bayesian ANOVA using BayesFactor package
-
-```{r computing Bayesian ANOVA using BayesFactor}
-
-magnitudedata <- magnitudedata %>%
-  dplyr::filter(heading > 0)
-
-magnitudedata$heading <- as.factor(magnitudedata$heading)
-
-bf <- anovaBF(FirstSteeringTime ~ heading, data = magnitudedata)
-bf
-
-```
-
-Using the anovaBF function tests the full hypothesis model versus the null model hypothesis. In my example, this will be the main effect of heading. 
-
-The computed Bayes factor is 2.24 x 10^75. This indicates that the current data is 2.24 x 10^75 times more likely under the alternative hypothesis versus the null hypothesis i.e. there is a main effect difference between the levels of my heading factor.
-
-However, am I testing the "right" hypothesis? Richard Morey (https://richarddmorey.org/2015/01/multiple-comparisons-with-bayesfactor-part-2-order-restrictions/#comment-7782) proposed that testing for differences between your factor levels refers to an *unconstrained model* (unconstrained in the sense that I am looking for any differences between my factor levels without specification). I actually have specific predictions on how my factor levels will differ. This refers to an *order restriction model*:
-
-0.5 > 1.0 > 1.5 > 2.0
-
-Already I have Bayes factor for the full model versus the null model. My order restriction model will allow me to make 2 more comparisons with my Bayes factor:
-
-- Full model versus the order restriction model
-- Order contraint model versus null model
-
-Bayes factor is the degree of change from prior to posterior odds. Hence if we can compute prior odds, we can compute the Bayes factor. Because I have not specified a prior distribution, my prior odds have equal probability across my factor levels. With 4 factors, the prior odds are 1/8 as there are 8 orderings.
-
-## Sampling and plotting posterior distribution
-
-```{r sample from the posterior distribution}
-samples <-  posterior(bf, iterations = 10000)
-head(samples)
-
-summary(samples[,2:5])
-
-plot(samples[,2:3])
-plot(samples[,4:5])
-```
-
-The *posterior* function allows me to sample from the posterior distribution of each heading.
-
-I think the *mu* parameter refers to an estimated population mean parameter for reaction time. Each heading level is then compared to this mu parameter to compute the effect.
-
-The plots show the posterior distributions for each heading level and the standardised effect size. For the *0.5 heading*, the HDI spans across positive effect sizes (i.e. reactions times are higher than *mu*). For *1.0 heading* the HDI spans across zero (reaction times are the same as *mu*). For *1.5 and 2.0 heading* the HDIs span negative standardised effects sizes (reaction times are lower than *mu*).
-
-However these HDIs do how my order restrictions...
-
-## Creating order restriction model
-
-```{r order restriction  model}
-## check order restriction 
-consistent = (samples[, "heading-1.5"] > samples[, "heading-2"]) &
-  (samples[, "heading-1"] > samples[, "heading-1.5"]) &
-  (samples[, "heading-0.5"] > samples[, "heading-1"])
-
-N_consistent = sum(consistent)
-```
-
-I construct order restrictions whereby I expect larger RTs for 1.5 than for 2, 1 than for 1.5, and 0.5 than for 1.
-
-## Order restriction  model versus full model
-
-```{r restriction versus full model}
-bf_contraint_against_full = (N_consistent / 10000) / (1 / 8)
-bf_contraint_against_full
-```
-
-The posterior probability is the number of consistent order restrictions from the posterior (*n_consistent*) divided by the number of samples (10000). Dividing the posterior by the prior distribution probabilites to get the Bayes factor of the restriction model versus the full model.
-
-We generate a Bayes factor of 8. Hence the data has changed my opinion of the data, in favour of the restriction model, by a factor of 8. 
-
-## Order restriction model versus null model
-
-```{r restriction versus the null model}
-## Convert bf1 to a number so that we can multiply it
-bf_full_against_null = as.vector(bf)
-
-## Use transitivity to compute desired Bayes factor
-bf_restriction_against_null <- bf_contraint_against_full * bf_full_against_null
-bf_restriction_against_null
-
-```
-
-If I multiple the Bayes factor from the full model by the Bayes factor of the contraint versus the full model, I can generate the Bayes factor for the restriction model versus the null model. This generates a Bayes factor of 1.79 x 10^76. This indicates the data is 1.79 x 10^76 more likely under the restriction model than under the null.
-
-Overall, I can say that there is more evidence for restriction model versus the null than for the standard main effect model versus the null. However with a Bayes factor of 8, I would remain inconclusive on the restriction versus full model comparison.
-
-## Conclusions so far
-
-Using the anovaBF function gives me a nice introduction to Bayesian analyses. However even a Bayesian ANOVA relies on my error being normally distributed (which it is not). Because of this, I investigated Bayesian generalised linear models where I could account for my normal distribution of errors.
 
 ## Looking at the distribution of my data
 
