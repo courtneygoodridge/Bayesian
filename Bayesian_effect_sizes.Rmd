@@ -99,6 +99,12 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 # default contrasts - orthogonal
 contrasts(magnitudedata$heading)
 
+contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
+
+contrasts(magnitudedata$heading) <- contrastmatrix
+
+contrasts(magnitudedata$heading)
+
 my_model_bayes <- stan_glm(FirstSteeringTime ~ heading,
                            family = gaussian("log"),
                            adapt_delta = 0.999,
@@ -110,22 +116,32 @@ For the purpose of this example I have left the default contrasts as they are. T
 ## Standardising posteriors
 
 ```{r}
-standard_my_model_bayes <- standardize_posteriors(my_model_bayes,
+posthoc_model <- standardize_posteriors(my_model_bayes,
+                                                  method = "posthoc",
+                                                  robust = TRUE)
+
+smart_model <- standardize_posteriors(my_model_bayes,
                                                   method = "smart",
                                                   robust = TRUE)
 
-posteriors <- insight::get_parameters(my_model_bayes)
+basic_model <- standardize_posteriors(my_model_bayes,
+                                                  method = "basic",
+                                                  robust = TRUE)
 ```
 
 The *standardize_posteriors* function standardises the coefficients of the model that is inputted. There are many methods that can be used to compute the standardisation. Specifics can be found here:
 (https://easystats.github.io/effectsize/reference/standardize_parameters.html#details)
 
 *posthoc*
-posthoc method might be best to use if I do not change headings to factor and just investigate the effect of heading overall.
+If I keep heading as a numeric data type, *posthoc* might be the best the option. Coefficients are divided by the SD of the outcome variables to generate "expression units". Coefficients that relate to numeric variables are then multiplied by the SD of the related terms. The result of this is that 1 SD increase in the IV relates to a a specific change in the outcome variable. 
+
+The only problem with this is that the interpretation does not work for factors or binary variables and thus this method used on these variable types means that coefficients relate to a change in level. This is not the end of the world but I would need to convert my heding values into factors in order to implement the restriction model for calculating the Bayes factor. 
 
 *smart*
-smart method will create effect sizes similar to Glass' Delta because the SD of the intercept is used. Apparently this effect size should be used if the standard deviations sig different (https://www.statisticshowto.datasciencecentral.com/glasss-delta/). Investigate how to work out how difference SDs are. 
+The *smart* method is similar to the *posthoc* method in that it does not require a full refit of the model. The main difference is that the SD of the response is computed on the relevant section of data. For example, if I had a factor with 3 levels (intercept, B and C) the scaling is done by the variance in the intercept only. This is similar to Glass' Delta and where only the the intercept is used. This should be used if the SDs are significantly different for responses (https://www.statisticshowto.datasciencecentral.com/glasss-delta/).
 
 *basic*
-basic treat all variables as continuous 
+The *basic* method treat all variables as continuous variables. 
+
+In the example, they use all of these methods with factors inputted into the model so perhaps they are all okay to use. 
 
