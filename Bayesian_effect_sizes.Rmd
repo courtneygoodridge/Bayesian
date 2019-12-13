@@ -99,7 +99,7 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 # default contrasts - orthogonal
 contrasts(magnitudedata$heading)
 
-contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
+contrastmatrix <- cbind(c(-1, 1, 0, 0, 0), c(0, -1, 1, 0, 0), c(0, 0, -1, 1, 0), c(0, 0, 0, -1, 1))
 
 contrasts(magnitudedata$heading) <- contrastmatrix
 
@@ -143,5 +143,7 @@ The *smart* method is similar to the *posthoc* method in that it does not requir
 *basic*
 The *basic* method treat all variables as continuous variables. 
 
-In the example, they use all of these methods with factors inputted into the model so perhaps they are all okay to use. 
+In the example, they use all of these methods with factors inputted into the model so perhaps they are all okay to use. For the analysis of my data, I think it would be best to calculate the effect of heading value using the *smart* method. This is because I do have differences in the variance of each heading angle i.e. larger standard deviations for smaller heading angles (the error development becomes more ambigous).
+
+
 
