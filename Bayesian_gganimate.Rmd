@@ -163,8 +163,9 @@ p3 <- magick::image_read(animate(p_significance, duration=nrow(data)/4, fps=20))
 
 
 
-Try dataframe that matches the example i.e. averaging 
+Example data frame can be viewed 2 ways - each row is a trial or each row is a participant. As an example, I could use one participants and show the accumulation of evidence as the trials increases. Thus for the for loop would be 10:nrow(pNumDF) for 10 trials and so on.
 
+I could do this with all trials in the magnitude dataframe however that might be computationally heavy. 
 
 
 
