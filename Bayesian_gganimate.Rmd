@@ -7,6 +7,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+This R markdown file will detail how to visualise the accumulation of evidence that occurs during Bayesian analysis. Frequentist analyses assume that the null hypothesis model is true, and then compute the probability of the simulated data under the null being as extreme as the obtained data. If the probability is low, the null is rejected and the alternative hypothesis is accepted. 
+
 ## Load packages
 
 ```{r}
@@ -175,6 +177,9 @@ I could do this with all trials in the magnitude dataframe however that might be
 
 prior_width <- 0.333
 
+example <- magnitudedata %>%
+  dplyr::select(heading, FirstSteeringTime, pNum) %>%
+  dplyr::filter(pNum == 10)
 
 vizmatrix <- estimate::visualisation_matrix(magnitudedata["heading"], length = 5)
 
@@ -185,11 +190,11 @@ params <- data.frame()
 prediction <- data.frame()
 correlation_data <- data.frame()
 
-for(i in magnitudedata$pNum){
+for(i in 10:nrow(example)){
   print(i)
 
   # Get data
-  current_data <- magnitudedata[magnitudedata$pNum == i,]
+  current_data <- example[1:i,]
   current_data$Evidence <- i
   correlation_data <- rbind(correlation_data, current_data)
 
@@ -231,10 +236,10 @@ for(i in magnitudedata$pNum){
 ```{r}
 
 p_correlation <- correlation_data %>%
-  ggplot(aes(y=FirstSteeringTime, x=heading)) +
+  ggplot(aes(y = FirstSteeringTime, x = heading)) +
   geom_point(size=3) +
   geom_ribbon(data=prediction, aes(ymin=CI_low, y=Median, ymax=CI_high, fill=Evidence), alpha=0.3) +
-  geom_line(data=prediction, aes(y=Median, color=Evidence), size=1) +
+  geom_line(data = prediction, aes(y = Median, color = Evidence), size = 1) +
   see::theme_modern() +
   xlab("Variable 1") +
   ylab("Variable 2") +
@@ -246,12 +251,9 @@ p_correlation <- correlation_data %>%
 
 p_posterior <- posteriors %>%
   ggplot(aes(x=x, y=y)) +
-  geom_area(data=priors, fill="#2196F3", alpha=1) +
   geom_segment(x = 0 , y = 0, xend = 0, yend = max(priors$y), size=0.5, color="#3F51B5", linetype = "dashed") +
   geom_segment(data=params, aes(x = Median , y = 0, xend = Median, yend = Max, color=Evidence), size=0.5, linetype = "dashed") +
   geom_line(aes(color=Evidence), size=1.5) +
-  annotate("segment", x = -0.7, xend = -prior_width, y = 0.75, yend = 0.75, colour = "#2196F3", size=1, arrow=arrow(length = unit(0.10, "inches"), type="closed")) +
-  annotate("text", x = -0.75, y = 0.75, hjust = 1, colour = "#2196F3", label="Prior") +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 7)) +
   scale_y_continuous(expand = c(0, 0)) +
   see::theme_modern() +
@@ -259,7 +261,7 @@ p_posterior <- posteriors %>%
   ylab("Probability") +
   theme(axis.ticks.y = element_blank(),
         axis.text.y = element_blank()) +
-  coord_cartesian(xlim=c(-1, 1)) +
+  coord_cartesian(xlim=c(-0.5, 0.5)) +
   gganimate::transition_time(Evidence)
 
 
@@ -285,7 +287,7 @@ In the correlation dataframe, there are 2 variabls and the investigation is how 
 ## Plotting figures
 
 ```{r}
-p1 <- magick::image_read(animate(p_correlation, duration=nrow(data)/4, fps=20))
+p1 <- magick::image_read(animate(p_correlation, duration=nrow(example)/4, fps=20))
 p2 <- magick::image_read(animate(p_posterior, duration=nrow(data)/4, fps=20))
 p3 <- magick::image_read(animate(p_significance, duration=nrow(data)/4, fps=20))
 
