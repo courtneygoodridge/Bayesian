@@ -41,6 +41,8 @@ setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experim
 temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
+
+magnitudedata$heading <- as.factor(magnitudedata$heading)
 ```
 
 ## Simulating data and fitting Bayesian models 
@@ -86,7 +88,7 @@ for(i in 5:nrow(data)){
   posterior <- insight::get_parameters(model)$V2
   param <- bayestestR::describe_posterior(model, test=c("pd", "ROPE", "p_MAP"), rope_ci = 1)[2,]
   param$BF_null <- bayestestR::bayesfactor_parameters(model, verbose = FALSE)[2, "BF"]
-  # param$BF_ROPE <- bayestestR::bayesfactor_rope(model, verbose = FALSE)[2, "BF"]
+  param$BF_ROPE <- bayesfactor_parameters(model, null = rope_range(model))[2, "BF"]
 
   param$Max <- bayestestR::density_at(posterior, median(posterior), method="KernSmooth")
   param$Evidence <- i
@@ -109,14 +111,19 @@ The code above first simulates correlation data. For each row in the dataframe, 
 
 The parameters for the model are then computed. This includes the posterior distribution and the prior dsitribution. The posterior distribution is then described from the model under 3 tests:
 
-- pd (probability of direction). This varies from 50% to 100% and indicates the probability that a parameter described by the posterior distribution is positive or negative. Mathematically it is defined as the percentage of the posterior distribution that is the same sign as the median of the distribution. 
+- *pd (probability of direction)*. This varies from 50% to 100% and indicates the probability that a parameter described by the posterior distribution is positive or negative. Mathematically it is defined as the percentage of the posterior distribution that is the same sign as the median of the distribution. 
 
-- ROPE (region of practical equivalence). This  computes the percentage if the posterior distribution that is within a region that is practically equivalent to the null value. 
+- *ROPE (region of practical equivalence)*. This  computes the percentage if the posterior distribution that is within a region that is practically equivalent to the null value. 
 
-- p_MAP ()
+- *p_MAP (probability of maximum a posteriori)*. This is the Bayesian equivalent of frequentist p value. Relates to the odds that a parameter, as described by the posterior distribution, has against the null hypothesis. Mathematically, it can be described as the density value at 0 divided by the maximum a posteriori (MAP).
+
+- *BF_NULL (Bayes factor against the null hypothesis)*. This represents evidence against the null hypothesis. This parameters is computed against a point null.
+
+- *BF_ROPE (Bayes factor against the rope'd null hypothesis)*. Represents evidence against the null hypothesis and a region of practicaly equivalence to the null value. 
+
+## Plotting figures
 
 ```{r}
-
 p_correlation <- correlation_data %>%
   ggplot(aes(y=V1, x=V2)) +
   geom_point(size=3) +
@@ -129,8 +136,6 @@ p_correlation <- correlation_data %>%
   scale_fill_gradient(low = "#FFC107", high = "#E91E63", guide = FALSE) +
   gganimate::transition_time(Evidence) +
   labs(title = "Evidence (Sample Size): {frame_time}")
-
-
 
 
 p_posterior <- posteriors %>%
@@ -156,11 +161,10 @@ p_posterior <- posteriors %>%
   gganimate::transition_time(Evidence)
 
 
-
 p_significance <- params %>%
-  select(Evidence, `p (direction)`=pd, `p (0)`=p_MAP, `p (ROPE)`=ROPE_Percentage, `BF (0)`=BF_null) %>%
+  select(Evidence, `p (direction)`=pd, `p (0)`=p_MAP, `p (ROPE)`=ROPE_Percentage, `BF (0)`=BF_null, `BF (ROPE)`= BF_ROPE) %>%
   tidyr::pivot_longer(cols=-Evidence, names_to = "Index", values_to = "Value") %>%
-  mutate(Index = forcats::fct_relevel(Index, "p (direction)", "p (0)", "p (ROPE)", "BF (0)")) %>%
+  mutate(Index = forcats::fct_relevel(Index, "p (direction)", "p (0)", "p (ROPE)", "BF (ROPE)", "BF (0)")) %>%
   ggplot(aes(x=Evidence, y=Value, color=Index, group=1)) +
   geom_line(size=2) +
   scale_color_manual(values = c("p (direction)"="#9C27B0", "p (0)"="#f44336", "p (ROPE)"="#FFC107", "BF (0)"="#4CAF50", "BF (ROPE)"="#CDDC39"), guide=FALSE) +
@@ -173,31 +177,34 @@ p_significance <- params %>%
 
 ```
 
+## Saving figures is one main figure
+
 ```{r}
+p1 <- magick::image_read(animate(p_correlation, duration=nrow(example)/4, fps=20))
+p2 <- magick::image_read(animate(p_posterior, duration=nrow(example)/4, fps=20))
+p3 <- magick::image_read(animate(p_significance, duration=nrow(example)/4, fps=20))
 
-p1 <- magick::image_read(animate(p_correlation, duration=nrow(data)/4, fps=20))
-p2 <- magick::image_read(animate(p_posterior, duration=nrow(data)/4, fps=20))
-p3 <- magick::image_read(animate(p_significance, duration=nrow(data)/4, fps=20))
+final <- magick::image_append(c(p1[1], p2[1], p3[1]))
+for(i in 2:length(p2)){
+  combined <- magick::image_append(c(p1[i], p2[i], p3[i]))
+  final <- c(final, combined)
+}
 
+# Save final
+gganimate::anim_save("evidence_accumulation.gif", final)
 ```
 
+Now that I have reproduced the example, I will compute the same with my own data. 
 
-
-Example data frame can be viewed 2 ways - each row is a trial or each row is a participant. As an example, I could use one participants and show the accumulation of evidence as the trials increases. Thus for the for loop would be 10:nrow(pNumDF) for 10 trials and so on.
-
-I could do this with all trials in the magnitude dataframe however that might be computationally heavy. 
-
-
-
-## Create example data
+## Selecting example participant and fitting model for each trial
 
 ```{r}
 
-prior_width <- 0.333
+prior_width <- 0.1
 
 example <- magnitudedata %>%
   dplyr::select(heading, FirstSteeringTime, pNum) %>%
-  dplyr::filter(pNum == 10)
+  dplyr::filter(pNum < 4)
 
 vizmatrix <- estimate::visualisation_matrix(magnitudedata["heading"], length = 5)
 
@@ -207,7 +214,6 @@ posteriors <- data.frame()
 params <- data.frame()
 prediction <- data.frame()
 correlation_data <- data.frame()
-
 for(i in 10:nrow(example)){
   print(i)
 
@@ -218,7 +224,8 @@ for(i in 10:nrow(example)){
 
   # Model and make predictions
   model <- rstanarm::stan_glm(FirstSteeringTime ~ heading,
-                              prior = normal(0, prior_width),
+                              prior = cauchy(0, prior_width),
+                              family = Gamma(link = "identity"),
                               data=current_data)
 
 
@@ -230,7 +237,7 @@ for(i in 10:nrow(example)){
   posterior <- insight::get_parameters(model)$heading
   param <- bayestestR::describe_posterior(model, test=c("pd", "ROPE", "p_MAP"), rope_ci = 1)[2,]
   param$BF_null <- bayestestR::bayesfactor_parameters(model, verbose = FALSE)[2, "BF"]
-  # param$BF_ROPE <- bayestestR::bayesfactor_rope(model, verbose = FALSE)[2, "BF"]
+  param$BF_ROPE <- bayesfactor_parameters(model, null = rope_range(model))[2, "BF"]
 
   param$Max <- bayestestR::density_at(posterior, median(posterior), method="KernSmooth")
   param$Evidence <- i
@@ -245,11 +252,9 @@ for(i in 10:nrow(example)){
   prior$Evidence <- i
   priors <- rbind(priors, prior)
 }
-
-
 ```
 
-## Make figures
+## Plotting figures
 
 ```{r}
 
@@ -282,27 +287,42 @@ p_posterior <- posteriors %>%
   coord_cartesian(xlim=c(-0.5, 0.5)) +
   gganimate::transition_time(Evidence)
 
-
 p_significance <- params %>%
-  select(Evidence, `p (direction)`=pd, `p (0)`=p_MAP, `p (ROPE)`=ROPE_Percentage, `BF (0)`=BF_null) %>%
+  mutate(BF = 1 / abs(BF_null), BF_ROPED = 1 / abs(BF_ROPE)) %>%
+  select(Evidence, `p (direction)`=pd, `p (0)`=p_MAP, `p (ROPE)`=ROPE_Percentage, `BF (0)`=BF, `BF (ROPE)`= BF_ROPED) %>%
   tidyr::pivot_longer(cols=-Evidence, names_to = "Index", values_to = "Value") %>%
-  mutate(Index = forcats::fct_relevel(Index, "p (direction)", "p (0)", "p (ROPE)", "BF (0)")) %>%
+  mutate(Index = forcats::fct_relevel(Index, "p (direction)", "p (0)", "p (ROPE)", "BF (0)", "BF (ROPE)")) %>%
   ggplot(aes(x=Evidence, y=Value, color=Index, group=1)) +
   geom_line(size=2) +
-  scale_color_manual(values = c("p (direction)"="#9C27B0", "p (0)"="#f44336", "p (ROPE)"="#FFC107", "BF (0)"="#4CAF50"), guide=FALSE) +
+  scale_color_manual(values = c("p (direction)"="#9C27B0", "p (0)"="#f44336", "p (ROPE)"="#FFC107", "BF (0)"="#4CAF50", "BF (ROPE)"="#CDDC39"), guide=FALSE) +
   facet_wrap(~Index, nrow=5, scales = "free") +
   ylab("") +
-  xlab("Evidence (Sample Size)") +
+  xlab("Evidence (Number of trials)") +
   see::theme_modern() +
   gganimate::transition_reveal(Evidence)
 
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
+
+anim <- animate(p_significance)
+anim_save("significance.gif", anim)
+
 ```
 
-**Correlation dataframe**
 
-In the correlation dataframe, there are 2 variabls and the investigation is how one affects the other. 
 
-## Plotting figures
+
+
+**p_significance**
+
+*p(ROPE)*
+
+This represents the percentage of the posterior distribution that is in a region of practical equivalance to the null. Just before 200 trials, it is driven down to 0%, thus 0% of the most credible values of the effect are practically equivalent to the null. 
+
+*BF(0) and BF(ROPE)*
+
+Here I make a slight alteration to the code. I take the inverse of the Bayes factor and the Bayes factor ROPE as specified here (https://easystats.github.io/report/articles/interpret_metrics.html#bayes-factor-bf). This means that the interpretation of these Bayes factors are now the amount of evidence in favour of the null model hypothesis, given the data. As data is collected, evidence for the null model gets driven down to zero. The alternative hypothesis is thus more likely given the data. 
+
+## Saving figures
 
 ```{r}
 p1 <- magick::image_read(animate(p_correlation, duration=nrow(example)/4, fps=20))
