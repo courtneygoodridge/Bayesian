@@ -7,7 +7,13 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-This R markdown file will detail how to visualise the accumulation of evidence that occurs during Bayesian analysis. Frequentist analyses assume that the null hypothesis model is true, and then compute the probability of the simulated data under the null being as extreme as the obtained data. If the probability is low, the null is rejected and the alternative hypothesis is accepted. 
+This R markdown file will detail how to visualise the accumulation of evidence that occurs during Bayesian analysis. Frequentist analyses assume that the null hypothesis model is true, and then compute the probability of the simulated data under the null being as extreme as the obtained data. If the probability is low, the null is rejected and the alternative hypothesis is accepted.
+
+Within the Bayesian framework, a null and alternative model hypothesis are stated and represented as a prior distribution. The null model hypothesis is represented as an infintesmitely small spike on the null value of no effect. The alternative model hypothesis can be represented by a distribution on where the researcher expects the  the effect to be (driven by prior knowledge or expeirmentation). Each model has a mdoel-index parameter. Before data is obtained, credibility is equal between these parameters. As data is obtained, the model-indexes are updated via Bayes rule to reallocate credibility for each of the model indexes.
+
+The key difference between them is that the frequentist approach identifies the probability of data, given that the theory is true (p(data | theory)). Theoretically this does not make too much sence as the null hypothesis is rarely true and thus deviation from it is always quite likely given enough data.
+
+Alternatively, Bayesian frameworks identify the probability of theory, given the obtained data (p(theory | data)). This is actually what researchers want the answer to and Bayesian analysis gives them this. 
 
 ## Load packages
 
@@ -36,6 +42,8 @@ temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
 ```
+
+## Simulating data and fitting Bayesian models 
 
 ```{r}
 true_effect <- 0.5
@@ -96,6 +104,16 @@ for(i in 5:nrow(data)){
 
 
 ```
+
+The code above first simulates correlation data. For each row in the dataframe, it computes a Bayesian model. Using the *estimate_link* function, predicitions are computed from the inputted model. These include 95% CIs and HDIs. These can then be used for plotting alongside the median generated from the posterior distribution. 
+
+The parameters for the model are then computed. This includes the posterior distribution and the prior dsitribution. The posterior distribution is then described from the model under 3 tests:
+
+- pd (probability of direction). This varies from 50% to 100% and indicates the probability that a parameter described by the posterior distribution is positive or negative. Mathematically it is defined as the percentage of the posterior distribution that is the same sign as the median of the distribution. 
+
+- ROPE (region of practical equivalence). This  computes the percentage if the posterior distribution that is within a region that is practically equivalent to the null value. 
+
+- p_MAP ()
 
 ```{r}
 
@@ -288,8 +306,8 @@ In the correlation dataframe, there are 2 variabls and the investigation is how 
 
 ```{r}
 p1 <- magick::image_read(animate(p_correlation, duration=nrow(example)/4, fps=20))
-p2 <- magick::image_read(animate(p_posterior, duration=nrow(data)/4, fps=20))
-p3 <- magick::image_read(animate(p_significance, duration=nrow(data)/4, fps=20))
+p2 <- magick::image_read(animate(p_posterior, duration=nrow(example)/4, fps=20))
+p3 <- magick::image_read(animate(p_significance, duration=nrow(example)/4, fps=20))
 
 final <- magick::image_append(c(p1[1], p2[1], p3[1]))
 for(i in 2:length(p2)){
