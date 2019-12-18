@@ -266,7 +266,7 @@ for(i in c(1:20)){
 
 p_correlation <- correlation_data %>%
   ggplot(aes(y = FirstSteeringTime, x = heading)) +
-  geom_point(size=3) +
+  geom_jitter(size = 3, width = 0.25) +
   geom_ribbon(data=prediction, aes(ymin=CI_low, y=Median, ymax=CI_high, fill=Evidence), alpha=0.3) +
   geom_line(data = prediction, aes(y = Median, color = Evidence), size = 1) +
   see::theme_modern() +
