@@ -1,0 +1,55 @@
+---
+title: "tidybayes"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Aim of this markdown
+
+This markdown aims to reproduce the tidybayes analysis from this vignette (https://cran.r-project.org/web/packages/tidybayes/vignettes/tidy-rstanarm.html) using experiment 1 data.
+
+The exmaple data has 5 conditions and a response variable where each row is an observation. In my experiment 1, I have 4 conditions and response variable. Thus this should be a reproducible example. 
+
+## Load packages
+
+```{r}
+# rm(list = ls())
+library(magrittr)
+library(dplyr)
+library(forcats)
+library(tidyr)
+library(purrr)
+library(modelr)
+library(tidybayes)
+library(ggplot2)
+library(ggstance)
+library(ggridges)
+library(rstan)
+library(rstanarm)
+library(cowplot)
+library(RColorBrewer)
+library(gganimate)
+```
+
+## Load data
+
+```{r}
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv"))
+myfiles = lapply(temp, read.csv)
+magnitudedata <- do.call(rbind.data.frame, myfiles)
+```
+
+## Fit Bayesian model
+
+```{r}
+magnitudedata$heading <- as.factor(magnitudedata$heading)
+
+m <- stan_glm(FirstSteeringTime ~ heading,
+              prior = cauchy(0, 0.1),
+              family = Gamma("identity"),
+              data = magnitudedata)
+```

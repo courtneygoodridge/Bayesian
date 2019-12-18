@@ -7,6 +7,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Aim of this markdown
+
 This R markdown file will detail how to visualise the accumulation of evidence that occurs during Bayesian analysis. Frequentist analyses assume that the null hypothesis model is true, and then compute the probability of the simulated data under the null being as extreme as the obtained data. If the probability is low, the null is rejected and the alternative hypothesis is accepted.
 
 Within the Bayesian framework, a null and alternative model hypothesis are stated and represented as a prior distribution. The null model hypothesis is represented as an infintesmitely small spike on the null value of no effect. The alternative model hypothesis can be represented by a distribution on where the researcher expects the  the effect to be (driven by prior knowledge or expeirmentation). Each model has a mdoel-index parameter. Before data is obtained, credibility is equal between these parameters. As data is obtained, the model-indexes are updated via Bayes rule to reallocate credibility for each of the model indexes.
@@ -201,24 +203,28 @@ Now that I have reproduced the example, I will compute the same with my own data
 ```{r}
 
 prior_width <- 0.1
+namevector <- c("Evidence")
 
-example <- magnitudedata %>%
-  dplyr::select(heading, FirstSteeringTime, pNum) %>%
-  dplyr::filter(pNum < 4)
+#example <- magnitudedata %>%
+  #dplyr::select(heading, FirstSteeringTime, pNum) %>%
+  #dplyr::filter(pNum < 11)
 
 vizmatrix <- estimate::visualisation_matrix(magnitudedata["heading"], length = 5)
 
 # Initialize empty dataframes
+current_data <- data.frame()
 priors <- data.frame()
 posteriors <- data.frame()
 params <- data.frame()
 prediction <- data.frame()
 correlation_data <- data.frame()
-for(i in 10:nrow(example)){
+for(i in c(1:20)){
   print(i)
 
   # Get data
-  current_data <- example[1:i,]
+  tmp_data <- magnitudedata[magnitudedata$pNum == i,]
+  tmp_data[ , namevector] <- NA
+  current_data <- rbind(current_data, tmp_data)
   current_data$Evidence <- i
   correlation_data <- rbind(correlation_data, current_data)
 
@@ -264,8 +270,8 @@ p_correlation <- correlation_data %>%
   geom_ribbon(data=prediction, aes(ymin=CI_low, y=Median, ymax=CI_high, fill=Evidence), alpha=0.3) +
   geom_line(data = prediction, aes(y = Median, color = Evidence), size = 1) +
   see::theme_modern() +
-  xlab("Variable 1") +
-  ylab("Variable 2") +
+  xlab("Heading") +
+  ylab("Reaction time (RT)") +
   scale_colour_gradient(low = "#FFC107", high = "#E91E63", guide = FALSE) +
   scale_fill_gradient(low = "#FFC107", high = "#E91E63", guide = FALSE) +
   gganimate::transition_time(Evidence) +
@@ -285,7 +291,9 @@ p_posterior <- posteriors %>%
   theme(axis.ticks.y = element_blank(),
         axis.text.y = element_blank()) +
   coord_cartesian(xlim=c(-0.5, 0.5)) +
-  gganimate::transition_time(Evidence)
+  gganimate::transition_time(Evidence) +
+  labs(title = "Evidence (Sample size): {frame_time}")
+
 
 p_significance <- params %>%
   mutate(BF = 1 / abs(BF_null), BF_ROPED = 1 / abs(BF_ROPE)) %>%
@@ -297,7 +305,7 @@ p_significance <- params %>%
   scale_color_manual(values = c("p (direction)"="#9C27B0", "p (0)"="#f44336", "p (ROPE)"="#FFC107", "BF (0)"="#4CAF50", "BF (ROPE)"="#CDDC39"), guide=FALSE) +
   facet_wrap(~Index, nrow=5, scales = "free") +
   ylab("") +
-  xlab("Evidence (Number of trials)") +
+  xlab("Evidence (Sample Size)") +
   see::theme_modern() +
   gganimate::transition_reveal(Evidence)
 
@@ -336,9 +344,9 @@ Here I make a slight alteration to the code. I take the inverse of the Bayes fac
 ## Saving figures
 
 ```{r}
-p1 <- magick::image_read(animate(p_correlation, duration=nrow(example)/4, fps=20))
-p2 <- magick::image_read(animate(p_posterior, duration=nrow(example)/4, fps=20))
-p3 <- magick::image_read(animate(p_significance, duration=nrow(example)/4, fps=20))
+p1 <- magick::image_read(animate(p_correlation, duration=nrow(magnitudedata)/4, fps=20))
+p2 <- magick::image_read(animate(p_posterior, duration=nrow(magnitudedata)/4, fps=20))
+p3 <- magick::image_read(animate(p_significance, duration=nrow(magnitudedata)/4, fps=20))
 
 final <- magick::image_append(c(p1[1], p2[1], p3[1]))
 for(i in 2:length(p2)){
