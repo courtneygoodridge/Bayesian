@@ -308,19 +308,30 @@ anim_save("significance.gif", anim)
 
 ```
 
+**p_posterior**
 
+This gif represents the change in the posterior distribution as evidence (number of trials) increases. The posterior distribution first starts as the prior distribution which I set as a cauchy distribution centred as 0 and with a scale of 0.1. The cauchy distribution is often used for default priors due to it having fat tails. This means higher probability is assigned to relatively large effect sizes. Because large effect size are unlikely in reality, this means the null model hypothesis is favoured slightly more which provides conservative prior. 
 
+As evidence increases, the posterior distribution takes shape. The median of the distribution moves away from the centre and towards the a coefficient effect of -0.2. The distribution also gets taller as the probability of the most credible values increases as more evidence is accumulated. 
 
 
 **p_significance**
 
+*p(direction)*
+
+This represents the probaility of the direction of the effect and ranges from 50% i.e. the effect could be positive or negative to 100% i.e. the effect is clear completely positive or negative. As data is analysed via Bayes rule, I find that the probability of direction hits 100% at around 50 trials. 
+
+*p(0)*
+
+This represents the growth of the Bayesian equivalent to the frequentist p value i.e. the maximum a posteriori. It mirrors the other metrics by being driven down to 0.
+
 *p(ROPE)*
 
-This represents the percentage of the posterior distribution that is in a region of practical equivalance to the null. Just before 200 trials, it is driven down to 0%, thus 0% of the most credible values of the effect are practically equivalent to the null. 
+This represents the percentage of the posterior distribution that is in a region of practical equivalance to the point null value. Just before 200 trials, it is driven down to 0%, thus 0% of the most credible values of the effect are practically equivalent to the null. 
 
 *BF(0) and BF(ROPE)*
 
-Here I make a slight alteration to the code. I take the inverse of the Bayes factor and the Bayes factor ROPE as specified here (https://easystats.github.io/report/articles/interpret_metrics.html#bayes-factor-bf). This means that the interpretation of these Bayes factors are now the amount of evidence in favour of the null model hypothesis, given the data. As data is collected, evidence for the null model gets driven down to zero. The alternative hypothesis is thus more likely given the data. 
+Here I make a slight alteration to the code. I take the inverse of the Bayes factor and the Bayes factor ROPE as specified here (https://easystats.github.io/report/articles/interpret_metrics.html#bayes-factor-bf). This means that the interpretation of these Bayes factors are now the amount of evidence in favour of the null model hypothesis, given the data. As data is collected, evidence for the null model gets driven down to zero. The alternative hypothesis is thus more likely given the data that is obtained.
 
 ## Saving figures
 
