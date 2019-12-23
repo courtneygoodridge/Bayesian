@@ -264,7 +264,7 @@ The code in the chunk above runs a Bayesian model for each trial for a given par
 
 ```{r}
 
-prior_width <- 0.02
+prior_width <- 0.333
 namevector <- c("Evidence")
 
 #example <- magnitudedata %>%
@@ -280,7 +280,7 @@ posteriors <- data.frame()
 params <- data.frame()
 prediction <- data.frame()
 correlation_data <- data.frame()
-for(i in c(1:20)){
+for(i in c(1:19)){
   print(i)
 
   # Get data
@@ -292,7 +292,7 @@ for(i in c(1:20)){
 
   # Model and make predictions
   model <- rstanarm::stan_glm(FirstSteeringTime ~ heading,
-                              prior = cauchy(0, prior_width),
+                              prior = normal(0, prior_width),
                               family = Gamma(link = "identity"),
                               adapt_delta = 0.95,
                               data=current_data)
@@ -317,7 +317,7 @@ for(i in c(1:20)){
   posterior$Evidence <- i
   posteriors <- rbind(posteriors, posterior)
 
-  prior <- bayestestR::estimate_density(bayestestR::distribution_cauchy(1000, 0, prior_width), method="KernSmooth")
+  prior <- bayestestR::estimate_density(bayestestR::distribution_normal(1000, 0, prior_width), method="KernSmooth")
   prior$Evidence <- i
   priors <- rbind(priors, prior)
 }
