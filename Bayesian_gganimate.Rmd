@@ -34,12 +34,14 @@ library(insight)
 library(devtools)
 install_github("easystats/estimate")
 library(magick)
+library(logspline)
 ```
 
 ## Loading my own data
 
 ```{r}
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
 magnitudedata <- do.call(rbind.data.frame, myfiles)
@@ -105,8 +107,6 @@ for(i in 5:nrow(data)){
   prior$Evidence <- i
   priors <- rbind(priors, prior)
 }
-
-
 ```
 
 The code above first simulates correlation data. For each row in the dataframe, it computes a Bayesian model. Using the *estimate_link* function, predicitions are computed from the inputted model. These include 95% CIs and HDIs. These can then be used for plotting alongside the median generated from the posterior distribution. 
@@ -198,16 +198,15 @@ gganimate::anim_save("evidence_accumulation.gif", final)
 
 Now that I have reproduced the example, I will compute the same with my own data. 
 
-## Selecting example participant and fitting model for each trial
+## Fitting model for each trial (within each participant)
 
 ```{r}
+prior_width <- 0.02
+#namevector <- c("Evidence")
 
-prior_width <- 0.1
-namevector <- c("Evidence")
-
-#example <- magnitudedata %>%
-  #dplyr::select(heading, FirstSteeringTime, pNum) %>%
-  #dplyr::filter(pNum < 11)
+example <- magnitudedata %>%
+  dplyr::select(heading, FirstSteeringTime, pNum) %>%
+  dplyr::filter(pNum == 11)
 
 vizmatrix <- estimate::visualisation_matrix(magnitudedata["heading"], length = 5)
 
@@ -218,13 +217,12 @@ posteriors <- data.frame()
 params <- data.frame()
 prediction <- data.frame()
 correlation_data <- data.frame()
-for(i in c(1:20)){
+
+for(i in 11:nrow(example)){
   print(i)
 
   # Get data
-  tmp_data <- magnitudedata[magnitudedata$pNum == i,]
-  tmp_data[ , namevector] <- NA
-  current_data <- rbind(current_data, tmp_data)
+  current_data <- example[1:i,]
   current_data$Evidence <- i
   correlation_data <- rbind(correlation_data, current_data)
 
@@ -254,11 +252,80 @@ for(i in c(1:20)){
   posterior$Evidence <- i
   posteriors <- rbind(posteriors, posterior)
 
-  prior <- bayestestR::estimate_density(bayestestR::distribution_normal(1000, 0, prior_width), method="KernSmooth")
+  prior <- bayestestR::estimate_density(bayestestR::distribution_cauchy(1000, 0, prior_width), method="KernSmooth")
   prior$Evidence <- i
   priors <- rbind(priors, prior)
 }
 ```
+
+The code in the chunk above runs a Bayesian model for each trial for a given participant. I can choose to select multiple participants and compute model for each trial also. Prior distribution I use here is the cauchy with a scale value of 0.02. As specified here (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations) you want an informative prior that rule out unreasonable values but not to rule out higher values tat could be true given the data. A cauchy dsitrbiution has fat tails which assigns probability to larger values. Because these values are less likely overall, a prior distribution like this favours the null model hypothesis and thus is considered more conservative. 
+
+## Fitting model for each participant
+
+```{r}
+
+prior_width <- 0.02
+namevector <- c("Evidence")
+
+#example <- magnitudedata %>%
+  #dplyr::select(heading, FirstSteeringTime, pNum) %>%
+  #dplyr::filter(pNum < 11)
+
+vizmatrix <- estimate::visualisation_matrix(magnitudedata["heading"], length = 5)
+
+# Initialize empty dataframes
+current_data <- data.frame()
+priors <- data.frame()
+posteriors <- data.frame()
+params <- data.frame()
+prediction <- data.frame()
+correlation_data <- data.frame()
+for(i in c(1:20)){
+  print(i)
+
+  # Get data
+  tmp_data <- magnitudedata[magnitudedata$pNum == i,]
+  tmp_data[ , namevector] <- NA
+  current_data <- rbind(current_data, tmp_data)
+  current_data$Evidence <- i
+  correlation_data <- rbind(correlation_data, current_data)
+
+  # Model and make predictions
+  model <- rstanarm::stan_glm(FirstSteeringTime ~ heading,
+                              prior = cauchy(0, prior_width),
+                              family = Gamma(link = "identity"),
+                              adapt_delta = 0.95,
+                              data=current_data)
+
+
+  current_prediction <- estimate::estimate_link(model, length=50, data=vizmatrix, keep_draws=FALSE, draws=10)
+  current_prediction$Evidence <- i
+  prediction <- rbind(prediction, current_prediction)
+
+  # Parameters
+  posterior <- insight::get_parameters(model)$heading
+  param <- bayestestR::describe_posterior(model, test=c("pd", "ROPE", "p_MAP"), rope_ci = 1)[2,]
+  param$BF_null <- bayestestR::bayesfactor_parameters(model, verbose = FALSE)[2, "BF"]
+  param$BF_ROPE <- bayesfactor_parameters(model, null = rope_range(model))[2, "BF"]
+
+  param$Max <- bayestestR::density_at(posterior, median(posterior), method="KernSmooth")
+  param$Evidence <- i
+  params <- rbind(params, param)
+
+  # Prior and posterior
+  posterior <- bayestestR::estimate_density(posterior, method="KernSmooth")
+  posterior$Evidence <- i
+  posteriors <- rbind(posteriors, posterior)
+
+  prior <- bayestestR::estimate_density(bayestestR::distribution_cauchy(1000, 0, prior_width), method="KernSmooth")
+  prior$Evidence <- i
+  priors <- rbind(priors, prior)
+}
+```
+
+In the above code chunk, I compute a Bayesian model for each participant ("evidence refers to participants"). This makes more sense as the Bayesian posterior chnages with every new participant. For this example, I will run the model with a normal distribution as the prior. According to https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations, a normal distribution centred at 0 with a scale of 1 is generic weakly informative prior.
+
+It is important to know that the distribution refers to where and what the coefficient might be, rather than modelling the response variable itself. The latter is computed within the Bayesian GLM model via assigning a specific family and link function. 
 
 ## Plotting figures
 
@@ -280,6 +347,7 @@ p_correlation <- correlation_data %>%
 
 p_posterior <- posteriors %>%
   ggplot(aes(x=x, y=y)) +
+  geom_area(data = priors, fill="#2196F3", alpha=1) +
   geom_segment(x = 0 , y = 0, xend = 0, yend = max(priors$y), size=0.5, color="#3F51B5", linetype = "dashed") +
   geom_segment(data=params, aes(x = Median , y = 0, xend = Median, yend = Max, color=Evidence), size=0.5, linetype = "dashed") +
   geom_line(aes(color=Evidence), size=1.5) +
