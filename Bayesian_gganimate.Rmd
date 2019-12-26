@@ -35,6 +35,7 @@ library(devtools)
 install_github("easystats/estimate")
 library(magick)
 library(logspline)
+library(psych)
 ```
 
 ## Loading my own data
@@ -49,7 +50,75 @@ magnitudedata <- do.call(rbind.data.frame, myfiles)
 magnitudedata$heading <- as.factor(magnitudedata$heading)
 ```
 
-## Simulating data and fitting Bayesian models 
+## Simulating ANOVA data with 0 effect
+
+```{r}
+df <- sim.anova(es1 = 0, n1 = 4, factors = TRUE, std = TRUE) # 1 IV, 3 levels
+
+IV4 <- c(0, 0, 0, 2, 2, 2, 0, 0, 0.5, 0.5, 0, 0, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 1, 0.5, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2)
+
+df <- data.frame(IV4, df)
+```
+
+The code chunk above simulates an ANOVA with one IV with 4 levels that has no effect. I will use this dataframe to show that with the addition of data, the posterior distribution will centre on the null value.
+
+## Fitting Bayesian model to ANOVA data with zero effect
+
+```{r}
+# Initialize empty dataframes
+priors <- data.frame()
+posteriors <- data.frame()
+params <- data.frame()
+prediction <- data.frame()
+correlation_data <- data.frame()
+for(i in 1:nrow(df)){
+  print(i)
+
+  # Get data
+  current_data <- df[1:i,]
+  current_data$Evidence <- i
+  correlation_data <- rbind(correlation_data, current_data)
+
+  # Model and make predictions
+  model <- rstanarm::stan_glm(DV ~ IV4,
+                              prior = normal(0, prior_width),
+                              family = gaussian(link = "identity"),
+                              data=current_data,
+                              adapt_delta = 0.95,
+                              refresh = 0,
+                              iter=10000,
+                              chains=4,
+                              warmup=4000)
+
+
+  current_prediction <- estimate::estimate_link(model, length=50, data=vizmatrix, keep_draws=FALSE, draws=10)
+  current_prediction$Evidence <- i
+  prediction <- rbind(prediction, current_prediction)
+
+  # Parameters
+  posterior <- insight::get_parameters(model)$IV4
+  param <- bayestestR::describe_posterior(model, test=c("pd", "ROPE", "p_MAP"), rope_ci = 1)[2,]
+  param$BF_null <- bayestestR::bayesfactor_parameters(model, verbose = FALSE)[2, "BF"]
+  param$BF_ROPE <- bayesfactor_parameters(model, null = rope_range(model))[2, "BF"]
+
+  param$Max <- bayestestR::density_at(posterior, median(posterior), method="KernSmooth")
+  param$Evidence <- i
+  params <- rbind(params, param)
+
+  # Prior and posterior
+  posterior <- bayestestR::estimate_density(posterior, method="KernSmooth")
+  posterior$Evidence <- i
+  posteriors <- rbind(posteriors, posterior)
+
+  prior <- bayestestR::estimate_density(bayestestR::distribution_normal(1000, 0, prior_width), method="KernSmooth")
+  prior$Evidence <- i
+  priors <- rbind(priors, prior)
+}
+```
+
+The above code chunk fits a Bayesian model with gaussian family and identity link function. 
+
+## Simulating data and fitting Bayesian models froM GitHub example
 
 ```{r}
 true_effect <- 0.5
