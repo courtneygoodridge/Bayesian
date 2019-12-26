@@ -171,6 +171,8 @@ p_significance <- params %>%
 
 ## Simulating data and fitting Bayesian models froM GitHub example
 
+Maybe I can try a 0 effect version here - try another time
+
 ```{r}
 true_effect <- 0.5
 prior_width <- 0.333
