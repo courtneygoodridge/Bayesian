@@ -53,9 +53,9 @@ magnitudedata$heading <- as.factor(magnitudedata$heading)
 ## Simulating ANOVA data with 0 effect
 
 ```{r}
-df <- sim.anova(es1 = 0, n1 = 4, factors = TRUE, std = TRUE) # 1 IV, 3 levels
+df <- sim.anova(es1 = 0, n1 = 5, factors = TRUE, std = TRUE) # 1 IV, 3 levels
 
-IV4 <- c(0, 0, 0, 2, 2, 2, 0, 0, 0.5, 0.5, 0, 0, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 1, 0.5, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2)
+IV4 <- c(0, 2, 0.5, 1.5, 1, 0, 0, 1.5, 2, 2, 0, 1.5, 0, 0.5, 1.5, 0, 0, 1.5, 0, 0.5, 1.5, 0.5, 1.5, 0.5, 1, 0.5, 1.5, 0.5, 1, 1, 0.5, 1, 2, 2, 1, 1, 1, 2, 2, 2)
 
 df <- data.frame(IV4, df)
 ```
@@ -65,6 +65,8 @@ The code chunk above simulates an ANOVA with one IV with 4 levels that has no ef
 ## Fitting Bayesian model to ANOVA data with zero effect
 
 ```{r}
+vizmatrix <- estimate::visualisation_matrix(df["IV4"], length = 5)
+
 prior_width <- 0.333
 # Initialize empty dataframes
 priors <- data.frame()
@@ -72,7 +74,7 @@ posteriors <- data.frame()
 params <- data.frame()
 prediction <- data.frame()
 correlation_data <- data.frame()
-for(i in 1:nrow(df)){
+for(i in 5:nrow(df)){
   print(i)
 
   # Get data
@@ -114,6 +116,58 @@ for(i in 1:nrow(df)){
 ```
 
 The above code chunk fits a Bayesian model with gaussian family and identity link function. 
+
+## computing figures from Bayesian models with 0 effect 
+
+```{r}
+
+p_correlation <- correlation_data %>%
+  ggplot(aes(y = FirstSteeringTime, x = heading)) +
+  geom_jitter(size = 3, width = 0.25) +
+  geom_ribbon(data=prediction, aes(ymin=CI_low, y=Median, ymax=CI_high, fill=Evidence), alpha=0.3) +
+  geom_line(data = prediction, aes(y = Median, color = Evidence), size = 1) +
+  see::theme_modern() +
+  xlab("Heading") +
+  ylab("Reaction time (RT)") +
+  scale_colour_gradient(low = "#FFC107", high = "#E91E63", guide = FALSE) +
+  scale_fill_gradient(low = "#FFC107", high = "#E91E63", guide = FALSE) +
+  gganimate::transition_time(Evidence) +
+  labs(title = "Evidence (Sample Size): {frame_time}")
+
+
+p_posterior <- posteriors %>%
+  ggplot(aes(x=x, y=y)) +
+  geom_area(data = priors, fill="#2196F3", alpha=1) +
+  geom_segment(x = 0 , y = 0, xend = 0, yend = max(priors$y), size=0.5, color="#3F51B5", linetype = "dashed") +
+  geom_segment(data=params, aes(x = Median , y = 0, xend = Median, yend = Max, color=Evidence), size=0.5, linetype = "dashed") +
+  geom_line(aes(color=Evidence), size=1.5) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 7)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  see::theme_modern() +
+  xlab("Effect") +
+  ylab("Probability") +
+  theme(axis.ticks.y = element_blank(),
+        axis.text.y = element_blank()) +
+  coord_cartesian(xlim=c(-0.5, 0.5)) +
+  gganimate::transition_time(Evidence) +
+  labs(title = "Evidence (Sample size): {frame_time}")
+
+
+p_significance <- params %>%
+  dplyr::mutate(BF = 1 / abs(BF_null), BF_ROPED = 1 / abs(BF_ROPE)) %>%
+  dplyr::select(Evidence, `p (direction)`=pd, `p (0)`=p_MAP, `p (ROPE)`=ROPE_Percentage, `BF (0)`=BF, `BF (ROPE)`= BF_ROPED) %>%
+  tidyr::pivot_longer(cols=-Evidence, names_to = "Index", values_to = "Value") %>%
+  mutate(Index = forcats::fct_relevel(Index, "p (direction)", "p (0)", "p (ROPE)", "BF (0)", "BF (ROPE)")) %>%
+  ggplot(aes(x=Evidence, y=Value, color=Index, group=1)) +
+  geom_line(size=2) +
+  scale_color_manual(values = c("p (direction)"="#9C27B0", "p (0)"="#f44336", "p (ROPE)"="#FFC107", "BF (0)"="#4CAF50", "BF (ROPE)"="#CDDC39"), guide=FALSE) +
+  facet_wrap(~Index, nrow=5, scales = "free") +
+  ylab("") +
+  xlab("Evidence (Sample Size)") +
+  see::theme_modern() +
+  gganimate::transition_reveal(Evidence)
+
+```
 
 ## Simulating data and fitting Bayesian models froM GitHub example
 
@@ -189,7 +243,7 @@ The parameters for the model are then computed. This includes the posterior dist
 
 - *BF_ROPE (Bayes factor against the rope'd null hypothesis)*. Represents evidence against the null hypothesis and a region of practicaly equivalence to the null value. 
 
-## Plotting figures
+## Plotting figures from GitHub example
 
 ```{r}
 p_correlation <- correlation_data %>%
@@ -245,7 +299,7 @@ p_significance <- params %>%
 
 ```
 
-## Saving figures is one main figure
+## Saving figures is one main figure (from GitHub)
 
 ```{r}
 p1 <- magick::image_read(animate(p_correlation, duration=nrow(example)/4, fps=20))
@@ -264,7 +318,7 @@ gganimate::anim_save("evidence_accumulation.gif", final)
 
 Now that I have reproduced the example, I will compute the same with my own data. 
 
-## Fitting model for each trial (within each participant)
+## Fitting model for each trial (within each participant) from my own data
 
 ```{r}
 prior_width <- 0.02
@@ -326,7 +380,7 @@ for(i in 11:nrow(example)){
 
 The code in the chunk above runs a Bayesian model for each trial for a given participant. I can choose to select multiple participants and compute model for each trial also. Prior distribution I use here is the cauchy with a scale value of 0.02. As specified here (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations) you want an informative prior that rule out unreasonable values but not to rule out higher values tat could be true given the data. A cauchy dsitrbiution has fat tails which assigns probability to larger values. Because these values are less likely overall, a prior distribution like this favours the null model hypothesis and thus is considered more conservative. 
 
-## Fitting model for each participant
+## Fitting model for each participant from my data
 
 ```{r}
 
@@ -389,7 +443,7 @@ In the above code chunk, I compute a Bayesian model for each participant ("evide
 
 It is important to know that the distribution refers to where and what the coefficient might be, rather than modelling the response variable itself. The latter is computed within the Bayesian GLM model via assigning a specific family and link function. 
 
-## Plotting figures
+## Plotting figures (this chunk will work whether it is from each participant or or each trial)
 
 ```{r}
 
@@ -471,7 +525,7 @@ This represents the percentage of the posterior distribution that is in a region
 
 Here I make a slight alteration to the code. I take the inverse of the Bayes factor and the Bayes factor ROPE as specified here (https://easystats.github.io/report/articles/interpret_metrics.html#bayes-factor-bf). This means that the interpretation of these Bayes factors are now the amount of evidence in favour of the null model hypothesis, given the data. As data is collected, evidence for the null model gets driven down to zero. The alternative hypothesis is thus more likely given the data that is obtained.
 
-## Saving figures
+## Saving figures (from my own data)
 
 ```{r}
 p1 <- magick::image_read(animate(p_correlation, duration=nrow(magnitudedata)/4, fps=20))
