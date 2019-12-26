@@ -65,6 +65,7 @@ The code chunk above simulates an ANOVA with one IV with 4 levels that has no ef
 ## Fitting Bayesian model to ANOVA data with zero effect
 
 ```{r}
+prior_width <- 0.333
 # Initialize empty dataframes
 priors <- data.frame()
 posteriors <- data.frame()
@@ -82,13 +83,9 @@ for(i in 1:nrow(df)){
   # Model and make predictions
   model <- rstanarm::stan_glm(DV ~ IV4,
                               prior = normal(0, prior_width),
-                              family = gaussian(link = "identity"),
+                              family = gaussian(),
                               data=current_data,
-                              adapt_delta = 0.95,
-                              refresh = 0,
-                              iter=10000,
-                              chains=4,
-                              warmup=4000)
+                              adapt_delta = 0.95)
 
 
   current_prediction <- estimate::estimate_link(model, length=50, data=vizmatrix, keep_draws=FALSE, draws=10)
