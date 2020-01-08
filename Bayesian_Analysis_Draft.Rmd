@@ -25,6 +25,7 @@ library(loo) # Bayesian model comparison
 library(arm) # computes Bayes factor for glm model
 library(insight) # get posterior parameters 
 library(fitdistrplus) # investigating the distribution of my data
+library(emmeans) # for computing estimated marginal means for Bayesian models
 ```
 
 ## Load data
