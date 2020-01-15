@@ -32,10 +32,12 @@ library(bayestestR)
 library(see)
 library(insight)
 library(devtools)
-install_github("easystats/estimate")
 library(magick)
 library(logspline)
 library(psych)
+install.packages("devtools")
+devtools::install_github("easystats/modelbased")
+library("modelbased")
 ```
 
 ## Loading my own data
