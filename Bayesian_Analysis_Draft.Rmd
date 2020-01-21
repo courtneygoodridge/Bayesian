@@ -37,7 +37,7 @@ library(emmeans) # for computing estimated marginal means for Bayesian models
 setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
 temp = list.files(pattern = c("magnitudedata", "*.csv"))
 myfiles = lapply(temp, read.csv)
-magnitudedata <- do.call(rbind.data.frame, myfiles)
+dat <- do.call(rbind.data.frame, myfiles)
 ```
 
 ## Looking at the distribution of my data
@@ -96,8 +96,9 @@ These contrasts allow me to investigate whether RTs decrease as heading values i
 ```{r message = FALSE, warning = FALSE}
 fit_glm <- stan_glm(FirstSteeringTime ~ heading, 
                     family = Gamma(link = "identity"), 
+                    prior = normal(0, 0.3),
                     adapt_delta = 0.999, 
-                    data = magnitudedata)
+                    data = dat)
 ```
 
 The stan_glm function requires a prior. I omitted the option of a prior and defaulted to the weakly informative ones. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors)
