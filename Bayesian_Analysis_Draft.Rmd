@@ -1,6 +1,8 @@
 ---
 title: "Bayesian analysis - draft write up"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -26,6 +28,7 @@ library(arm) # computes Bayes factor for glm model
 library(insight) # get posterior parameters 
 library(fitdistrplus) # investigating the distribution of my data
 library(emmeans) # for computing estimated marginal means for Bayesian models
+library(fitdistrplus) # finding shape distribution
 ```
 
 ## Load data
@@ -95,8 +98,7 @@ These contrasts allow me to investigate whether RTs decrease as heading values i
 
 ```{r message = FALSE, warning = FALSE}
 fit_glm <- stan_glm(FirstSteeringTime ~ heading, 
-                    family = Gamma(link = "identity"), 
-                    prior = normal(0, 0.3),
+                    family = Gamma(link = "identity"),
                     adapt_delta = 0.999, 
                     data = dat)
 ```
