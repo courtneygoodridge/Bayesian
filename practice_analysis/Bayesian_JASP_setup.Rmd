@@ -1,0 +1,64 @@
+---
+title: "Bayesian_setup"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+This file converts experimental data into format usable for JASP analysis
+
+```{r load in data}
+# rm(list = ls())
+
+setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_code/experiment_1")
+# setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
+temp = list.files(pattern = c("magnitudedata", "*.csv")) # list all CSV files in the directory
+myfiles = lapply(temp, read.csv) # read these CSV in the directory
+magnitudedata <- do.call(rbind.data.frame, myfiles) # convert and combine the CSV files into dataframe
+
+```
+
+```{r load packages}
+
+library(tidyr)
+library(dplyr)
+
+```
+
+```{r constructing dataframe for JASP analysis}
+
+dat <- magnitudedata %>%
+  dplyr::select(ppid_trialn, heading, pNum, FirstSteeringTime) %>%
+  dplyr::filter(heading > 0) %>%
+  group_by(pNum, heading) %>%
+  summarise(meanRT = mean(FirstSteeringTime))
+
+jasp_RTdat <- spread(dat, key = heading, value = "meanRT") 
+
+
+dat <- magnitudedata %>%
+  dplyr::select(ppid_trialn, heading, pNum, peakSWA) %>%
+  dplyr::filter(heading > 0) %>%
+  group_by(pNum, heading) %>%
+  summarise(meanSWA = mean(peakSWA))
+
+jasp_SWAdat <- spread(dat, key = heading, value = "meanSWA") 
+
+
+```
+
+
+```{r data saving}
+
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1/Data cleaning and modelling/Bayesian")
+
+write.csv(jasp_RTdat, file = "jasp_RTdat.csv")
+
+
+write.csv(jasp_SWAdat, file = "jasp_SWAdat.csv")
+
+```
+
+
