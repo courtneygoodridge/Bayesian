@@ -88,33 +88,40 @@ By updating my model and setting *prior_PD* as TRUE, it saves samples from the p
 
 I then save the new model as a dataframe. This gives me access to the prior distributions for the coefficients. I then plot these to highlight the vaguely informative prior distribution. 
 
-One comment that I could make is that I am using a prior that is too wide. The distribution I am using is normal but the scale is 10. It is unlikely that my effect will be this large and the setting of priors influences the Bayes factor. Thus I might want a prior that situates less density over large effect sizes, as these generally less likely in these experiments. 
+This prior situates a lot of density over values around zero, given relatively equal probability of heading having a small positive or negative effect on reaction time. Very little density is situated over the larger effects (above +-2) as these are unlikely in most cognitive science research. 
 
 ## Investigating posterior distributions and ROPE intervals for each contrast
 
 ```{r}
-posteriors <- insight::get_parameters(fit_glm)
+"extracting posterior draws"
+posteriors <- insight::get_parameters(fit.gamma)
 
+"visualising posterior"
 ggplot(data = posteriors) +
+  geom_density(data = priors, aes(x = heading), fill = "black", alpha = 0.1) +
   geom_vline(xintercept = median(posteriors$heading), color = "red") +
+  geom_vline(xintercept = map_estimate(posteriors$heading), color = "yellow") +
+  geom_vline(xintercept = mean(posteriors$heading), color = "orange") +
   geom_density(aes(x = heading), fill = "red", alpha = 0.3) +
   geom_vline(xintercept = -.04, color = "black", size = 2) +
   geom_vline(xintercept = 0, color = "black", size = 2) +
   xlim(-.15, .15) +
   xlab("standardised coefficient effect")
 
-# establishing the percentage of the HDIs within the ROPE interval
-percentage_in_rope_glm <- rope(fit_glm, ci = 1, range = c(-0.04, 0))
+"establishing the percentage of the HDIs within the ROPE interval"
+percentage_in_rope_glm <- rope(fit.gamma, ci = 1, range = c(-0.04, 0))
 
 percentage_in_rope_glm
 
-# median from my HDIs of standardised effect size for each contrast
-
+"median from my HDIs of standardised effect size for each contrast"
 median(posteriors$heading)
 ```
+
 The following is generated from the example given here (https://easystats.github.io/bayestestR/articles/example1.html)
 
-The Bayesian GLM demonstrates that for each contrast, heading level is having an negative on the outcome variable i.e. an increase in heading is generating a decrease in RT. However, the Bayesian method does not rely on statistical sigificance in order to understand whether an effect is interesting - instead, the posterior distribution generates a probabilistic view of certain parameters and their uncertainty i.e. the coefficient for certain contrasts. Rather than conclude that there is simply a difference from a point null (0) one method used in Bayesian analyses is to construct a ROPE. 
+Here we visualise the posterior distribution from our model. The vertical lines indicate the mean, median and Maximum A Posteriori (peak of the posterior) values from the posterior distribution. These represent the most likely values of the true effect size parameter. 
+
+The Bayesian method does not rely on statistical significance in order to understand whether an effect is interesting - instead, the posterior distribution generates a probabilistic view of certain parameters and their uncertainty i.e. the coefficient for heading. Rather than conclude that there is simply a difference from a point null (0), one method used in Bayesian analyses is to construct a ROPE. 
 
 ROPE stands for "region of practical equivalence". Comparing your alternative hypothesis to a single point null does not make much sense theoretically, as it is very likely there will be a difference (even if it is extremely small). I can define a ROPE which is an interval around a point null that is "practically equivalent" to it.
 
