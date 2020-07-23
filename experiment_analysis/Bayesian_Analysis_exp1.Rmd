@@ -119,7 +119,7 @@ median(posteriors$heading)
 
 The following is generated from the example given here (https://easystats.github.io/bayestestR/articles/example1.html)
 
-Here we visualise the posterior distribution from our model. The vertical lines indicate the mean, median and Maximum A Posteriori (peak of the posterior) values from the posterior distribution. These represent the most likely values of the true effect size parameter. 
+Here we visualise the posterior distribution from our model alongside the prior distribution. The vertical lines indicate the mean, median and Maximum A Posteriori (peak of the posterior) values from the posterior distribution. These represent the most likely values of the true effect size parameter. 
 
 The Bayesian method does not rely on statistical significance in order to understand whether an effect is interesting - instead, the posterior distribution generates a probabilistic view of certain parameters and their uncertainty i.e. the coefficient for heading. Rather than conclude that there is simply a difference from a point null (0), one method used in Bayesian analyses is to construct a ROPE. 
 
@@ -129,23 +129,19 @@ Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0
 
 However this refers to the a 2 tailed hypothesis. I can be more specific. I know the direction of my effect (negative) thus I double the negative part of the interval and implement a one tailed ROPE interval [-0.04, 0]. These are defined as the **black** lines.
 
-I can then draw from the posterior distributions, plot the HDIs for each of my contrasts and indicate the median most credible value with a vertical line. This provides a nice literal interpretation 
+I can then draw from the posterior distributions, plot the HDIs and indicate the median most credible value with a vertical line. This provides a nice literal interpretation 
 
 "*95% of the the most credible values for standardised coefficient effect of my contrasts are not practically equivalent to the null*". 
-
-**Sidenote** I get a warning of multicollinearity between 2 of my contrasts (heading1 and heading2). This likely due to my contrast matrix being linearly dependent. 
 
 ## Probability of Direction
 
 ```{r}
-
 p_direction(posteriors)
-
 ```
 
-The *Probability of Direction* is a value that ranges from 50% to 100%. It is interpretted as the probability that a parameter is positive or negative. Mathematically it is defined as the percentage of the posterior distribition that is the same sign as the median. The *Probability of Direction* is indepedent of the model and computed from posterior draws. 
+The *Probability of Direction* is a value that ranges from 50% to 100%. It is interpreted as the probability that a parameter is positive or negative. Mathematically it is defined as the percentage of the posterior distribution that is the same sign as the median. The *Probability of Direction* is independent of the model and computed from posterior draws. 
 
-It does not detail the magnitude or importance of an effect - rather the probability that an effect is positive and negative. In this respect, it is directly relatable to the frequentist p value. 
+It does not detail the magnitude or importance of an effect. You could have a PD of 100% concentrated within and 0.0001 - 0.0001 range. This would indicate that the effect was positive with high certainty, however the size of the effect would negligible. Consequently, this states only that the probability that an effect is positive significant and negative. In this respect, it is strongly related to the frequentist p value. 
 
 For more information see:
 
