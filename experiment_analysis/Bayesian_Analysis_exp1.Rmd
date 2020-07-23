@@ -35,105 +35,60 @@ library(fitdistrplus) # finding shape distribution
 
 ```{r}
 # rm(list = ls()) - clear global environment
-# home working directory
-# setwd("C:/Users/Courtney/Documents/PhD/Project/Experiment_Code/experiment_1")
-setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1")
-temp = list.files(pattern = c("magnitudedata", "*.csv"))
-myfiles = lapply(temp, read.csv)
-dat <- do.call(rbind.data.frame, myfiles)
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_1/Data cleaning and modelling/Finished_code")
+magnitudedata <- read.csv("magnitudedata.csv")
+
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(EarlyResponses == FALSE)
 ```
 
-## Looking at the distribution of my data
-
-```{r}
-fit_g  <- fitdist(magnitudedata$FirstSteeringTime, "gamma")
-
-fit_ln <- fitdist(magnitudedata$FirstSteeringTime, "lnorm")
-
-par(mfrow = c(2,2))
-plot.legend <- c("gamma", "lognormal")
-denscomp(list(fit_g, fit_ln), legendtext = plot.legend)
-cdfcomp (list(fit_g, fit_ln), legendtext = plot.legend)
-qqcomp  (list(fit_g, fit_ln), legendtext = plot.legend)
-ppcomp  (list(fit_g, fit_ln), legendtext = plot.legend)
-```
-
-Here I looking at the distribution of my data.
-
-*Log-normal distribution* is like a normal distribution but only contains positive values. This creates a skewed distribution with a right tail. These characteristics match my reaction time data, hence the good fit.
-
-*Gamma distribution* is similar to *log-normal distribution* in that it is right skewed, and for continous data. 
-
-For both of these distributions, the shape parameter is held constant whilst the scale parameter shifts. This is good for my data as I have a lot of variance in my responses. As both of these distributions are so simialr, I proceed with *Gamma*.
-
-## Setting my contrasts
-
-```{r}
-# default contrasts - orthogonal
-contrasts(magnitudedata$heading)
-
-# setting my own contrasts - better addresses my research question
-contrastmatrix <- cbind(c(-1, 1, 0, 0), c(0, -1, 1, 0), c(0, 0, -1, 1))
-
-contrasts(magnitudedata$heading) <- contrastmatrix
-
-contrasts(magnitudedata$heading)
-```
-
-Before I fit my Bayesian generalised linear model, I need to set my contrasts.
-
-The default contrasts assume that the 0.5 heading condiiton is my control. They compare each of my other headings against this. These are my *"orthogonal"* contrasts in that they are linearly and statistically independent (each vector cannot be defined via a linear combination of the other vectors). 
-
-However I did not feel that these were the best contrasts for my research question. I create a contrast matrix with 3 contrasts:
-
-- heading1 <- 1.0 vs 0.5
-- heading2 <- 1.5 vs 1.0
-- heading3 <- 2.0 vs 1.5
-
-These contrasts allow me to investigate whether RTs decrease as heading values increase. 
-
-**Problem**: I am unsure how to implement a contrast matrix that would match the restriction  model I implemented for the Bayesian ANOVA. Thus this is the closest I can get so far (however I'm sure it is possible).
 
 ## Fitting Bayesian regression model
 
 ```{r message = FALSE, warning = FALSE}
-fit_glm <- stan_glm(FirstSteeringTime ~ heading, 
-                    family = Gamma(link = "identity"),
-                    adapt_delta = 0.999, 
-                    data = dat)
+fit.gamma <- stan_glmer(FirstSteeringTime ~ heading + (1 + heading | pNum),
+                        family = Gamma(link = "identity"),
+                        data = magnitudedata)
+summary(fit.gamma)
+
+fit.gamma.glm <- stan_glm(FirstSteeringTime ~ heading,
+                        family = Gamma(link = "identity"),
+                        data = magnitudedata)
+
+summary(fit.gamma.glm)
 ```
 
-The stan_glm function requires a prior. I omitted the option of a prior and defaulted to the weakly informative ones. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors)
+The stan_glmer function allows me to fit a Bayesian multilevel. This is necessary for my data structure as if I fit a standard glm, it assumes that every observation is actually a participant. This will inflate my estimate.
+
+The function also requires a prior. I omitted the option of a prior and defaulted to the weakly informative ones. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors)
 
 I set adapt_delta arguement to *0.999* to reduce the stepsize during the model simulation. Stepsize specifies the resolution at which you are simulating through the posterior distribution. If the steps are too large, I might miss something and thus estimates become biased. This is known as divergence. The documentation proposes an adapt_delta arguement value such as this to reduce the chances of divergence (http://mc-stan.org/rstanarm/articles/aov.html)
 
-## Summary of my Bayesian GLM model
-
-```{r}
-summary(fit_glm)
-mean(magnitudedata$FirstSteeringTime)
-```
-My Rhat values suggest the model succesfully converged.
+Rhat values suggest the model succesfully converged.
 
 *mean_ppd* in the estimates table can be used as a heuristic for how well the model describes the data. This value represents a best guess of the *mean posterior predicitive distribution* (distribution of simiulated data based on current data). Ideally this should be equal to the mean of my outcome variable (RT). In this case, the values are similar.
 
-### Investigating prior distributions for each contrast
+### Investigating prior distributions
 
 ```{r}
-fit_glm_prior <- update(fit_glm, prior_PD = TRUE)
+prior_summary(fit.gamma)
 
-priors <- as.data.frame(fit_glm_prior)
+fit.gamma.prior <- update(fit.gamma, prior_PD = TRUE)
+
+priors <- as.data.frame(fit.gamma.prior)
 
 ggplot(data = priors) +
   geom_density(aes(x = heading), fill = "red", alpha = 0.1) +
   ggtitle("Prior distribution for heading")
 ```
 
-When I fit the Bayesian GLM I do not specify a prior. This is because I am not sure of the effect that I might find. Thus the stan_glm model generates a vaguely informative prior for each contrast. In order to visualise this, I first update the model (*fit_glm*) and set *prior_PD* as TRUE. This saves samples from the prior distribution. Thus *fit_glm_prior* and *fit_glm* are the save objects put the first samples from the priors and the latter from the posterior distribution.
+The prior summary function gives me a summary of my prior. As I did not specify one, it provides a weakly informative one consisting of a normal distribution centred at 0.
 
-I then save the new model as a dataframe. This gives me access to the prior distributions for the coefficients for all 3 of my contrasts. I then plot these to demonstrate that each contrast has a vaguely informative prior distribution. 
+By updating my model and setting *prior_PD* as TRUE, it saves samples from the prior distribution. Thus *fit.gamma.prior* and *fit.gamma* are the save objects put the first samples from the priors and the latter from the posterior distribution.
 
-One commment that I could make is that I am using a prior that is too wide. The distribution I am using is normal but the scale is 10. It is unlikely that my effect will be this large and the setting of priors influences the Bayes factor. 
+I then save the new model as a dataframe. This gives me access to the prior distributions for the coefficients. I then plot these to highlight the vaguely informative prior distribution. 
+
+One comment that I could make is that I am using a prior that is too wide. The distribution I am using is normal but the scale is 10. It is unlikely that my effect will be this large and the setting of priors influences the Bayes factor. Thus I might want a prior that situates less density over large effect sizes, as these generally less likely in these experiments. 
 
 ## Investigating posterior distributions and ROPE intervals for each contrast
 
