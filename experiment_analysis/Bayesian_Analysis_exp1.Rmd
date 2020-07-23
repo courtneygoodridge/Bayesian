@@ -96,6 +96,11 @@ This prior situates a lot of density over values around zero, given relatively e
 "extracting posterior draws"
 posteriors <- insight::get_parameters(fit.gamma)
 
+"highest density interval"
+hdi.heading <- hdi(posteriors, ci = .89)
+hdi.heading <- hdi.heading %>%
+  dplyr::filter(Parameter == "heading")
+
 "visualising posterior"
 ggplot(data = posteriors) +
   geom_density(data = priors, aes(x = heading), fill = "black", alpha = 0.1) +
@@ -105,6 +110,8 @@ ggplot(data = posteriors) +
   geom_density(aes(x = heading), fill = "red", alpha = 0.3) +
   geom_vline(xintercept = -.04, color = "black", size = 2) +
   geom_vline(xintercept = 0, color = "black", size = 2) +
+  geom_vline(xintercept = hdi.heading$CI_low, color = "black") +
+  geom_vline(xintercept = hdi.heading$CI_high, color = "black") +
   xlim(-.15, .15) +
   xlab("standardised coefficient effect")
 
@@ -117,21 +124,21 @@ percentage_in_rope_glm
 median(posteriors$heading)
 ```
 
-The following is generated from the example given here (https://easystats.github.io/bayestestR/articles/example1.html)
+The following is generated from the example given here (https://easystats.github.io/bayestestR/articles/example1.html), here (https://easystats.github.io/bayestestR/articles/credible_interval.html) and here (https://easystats.github.io/bayestestR/articles/bayestestR.html).
 
 Here we visualise the posterior distribution from our model alongside the prior distribution. The vertical lines indicate the mean, median and Maximum A Posteriori (peak of the posterior) values from the posterior distribution. These represent the most likely values of the true effect size parameter. 
+
+I then compute the 89% HDI. 89% is arbitrary but was proposed by McElreath (2014, 2018) as being the most stable value. This is then plotted on the posterior distribution. The posterior alongside the HDI provide a nice interpretation for the overall effect. Rather than proposing a point estimate as you might in frequentist statistics (i.e. the correlation is r = 0.12) under this Bayesian framework, we can propose "the most probable value for our effect based upon our data is -0.11, however effects ranging from -0.1364861 to -0.09982279 are also compatible with the data".
 
 The Bayesian method does not rely on statistical significance in order to understand whether an effect is interesting - instead, the posterior distribution generates a probabilistic view of certain parameters and their uncertainty i.e. the coefficient for heading. Rather than conclude that there is simply a difference from a point null (0), one method used in Bayesian analyses is to construct a ROPE. 
 
 ROPE stands for "region of practical equivalence". Comparing your alternative hypothesis to a single point null does not make much sense theoretically, as it is very likely there will be a difference (even if it is extremely small). I can define a ROPE which is an interval around a point null that is "practically equivalent" to it.
 
-Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0.1 (half of a small effect size) multiplied by the standard deviation of the outcome variable. Ordinarily this would generate a ROPE interval of [-0.02, 0.02]. 
+Kruschke (2018) proposes that for linear models, ROPE intervals are defined as 0.1 (half of a small effect size) multiplied by the standard deviation of the outcome variable. Ordinarily this would generate a ROPE interval of [-0.02, 0.02]. However this refers to the a 2 tailed hypothesis. I can be more specific. I know the direction of my effect (negative) thus I double the negative part of the interval and implement a one tailed ROPE interval [-0.04, 0]. These are defined as the **black** lines.
 
-However this refers to the a 2 tailed hypothesis. I can be more specific. I know the direction of my effect (negative) thus I double the negative part of the interval and implement a one tailed ROPE interval [-0.04, 0]. These are defined as the **black** lines.
+Hence when comparing the ROPE to the 89% HDIs, it provides a very intuitive interpretation of the probability of the effects:
 
-I can then draw from the posterior distributions, plot the HDIs and indicate the median most credible value with a vertical line. This provides a nice literal interpretation 
-
-"*95% of the the most credible values for standardised coefficient effect of my contrasts are not practically equivalent to the null*". 
+"*89% of the the most credible values for standardised coefficient effect of my contrasts are not practically equivalent to the null*". 
 
 ## Probability of Direction
 
@@ -151,21 +158,21 @@ For more information see:
 ## Posterior predictive distributions
 
 ```{r}
-# observedresponses
+"observed responses"
 y <- magnitudedata$FirstSteeringTime
 
-# sample draws from the posterior distribution
-yrep_glm <- posterior_predict(fit_glm, draws = 50)
+"sample draws from the posterior distribution"
+y.draws <- posterior_predict(fit.gamma, draws = 50)
 
 color_scheme_set("brightblue")
-ppc_dens_overlay(y, yrep_glm[1:50, ])
+ppc_dens_overlay(y, y.draws[1:50, ])
 ```
 
-*Posterior distributions* explain unknown parameters (standardised effect size) and provide the 95% most credible values for that parameter. *Posterior predictive distributions* refer to a distribution of future predicted data based upon the data already seen. 
+*Posterior distributions* explain unknown parameters (standardised effect size) and provides the 95% most credible values for that parameter. *Posterior predictive distributions* refer to a distribution of future predicted data based upon the data already seen. 
 
 If the model is a good fit, you should be able to simulate similar data based on data generated during the experiment.
 
-My model demonstrates a reasonably good fit and predicts the peak location well, however it under predicts the density of the peak. 
+My model demonstrates a reasonably good fit and predicts the peak location well.  
 
 ## Computing a Bayes factor
 
