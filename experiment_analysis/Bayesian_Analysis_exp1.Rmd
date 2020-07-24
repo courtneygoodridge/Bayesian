@@ -42,6 +42,13 @@ magnitudedata <- magnitudedata %>%
   dplyr::filter(EarlyResponses == FALSE)
 ```
 
+## theme settings
+
+```{r}
+theme_plot <-   theme(axis.title.x = element_text(size = 15), axis.text.x = element_text(size = 12), axis.title.y = element_text(size = 15), axis.text.y = element_text(size = 12), title = element_text(size = 12), legend.title = element_text(size = 15), legend.text = element_text(size = 15), panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+```
+
 
 ## Fitting Bayesian regression model
 
@@ -76,6 +83,8 @@ Rhat values of 1 suggest the model successfully converged.
 ### Investigating prior distributions
 
 ```{r}
+"plotting individual models"
+
 for (i in c(1:length(models))){
   
   "select and save temp model"
@@ -91,17 +100,43 @@ for (i in c(1:length(models))){
           geom_density(aes(heading), fill = "red", alpha = 0.1))
 }
   
+prior_summary(fit.gamma.default.prior)
+prior_summary(fit.gamma.narrow.cauchy)
+prior_summary(fit.gamma.wide.cauchy)
+
+"Saving priors as dataframes"
+default.prior <- as.data.frame(update(fit.gamma.default.prior, prior_PD = TRUE)) %>%
+  dplyr::mutate(prior = "default")
   
+narrow.cauchy.prior <- as.data.frame(update(fit.gamma.narrow.cauchy, prior_PD = TRUE)) %>%
+  dplyr::mutate(prior = "cauchy_narrow")
 
-prior_summary(fit.gamma)
+wide.cauchy.prior <- as.data.frame(update(fit.gamma.wide.cauchy, prior_PD = TRUE)) %>%
+  dplyr::mutate(prior = "cauchy_wide")
 
-fit.gamma.prior <- update(fit.gamma, prior_PD = TRUE)
+priors = rbind(default.prior, narrow.cauchy.prior, wide.cauchy.prior)
 
-priors <- as.data.frame(fit.gamma.prior)
+"distribution for fill"
+ggplot(data = priors, mapping = aes(x = heading, fill = prior)) +
+         geom_density(alpha = 0.3) +
+         scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Normal, scale = 2.5", "Cauchy, scale = 1"), values = c("yellow", "red", "blue")) +
+  ggtitle("Prior distributions for heading") +
+  xlim(-10, 10) +
+  theme_plot +
+  theme(legend.position = c(0.8, 0.5))
 
-ggplot(data = priors) +
-  geom_density(aes(x = heading), fill = "red", alpha = 0.1) +
-  ggtitle("Prior distribution for heading")
+"distribution for line colour"
+ggplot() +
+  geom_density(data = default.prior, aes(x = heading, col = "red"), alpha = 0.3) +
+  geom_density(data = narrow.cauchy.prior, aes(x = heading, col = "orange"), alpha = 0.3) +
+  geom_density(data = wide.cauchy.prior, aes(x = heading, col = "blue"), alpha = 0.3) +
+  scale_color_identity(breaks = c("red", "orange", "blue"),
+                          labels = c("Normal, scale = 2.5", "Cauchy, scale = 0.2", "Cauchy, scale = 1"),
+                          guide = "legend") +
+  ggtitle("Prior distributions for heading") +
+  xlim(-10, 10) +
+  theme_plot +
+  theme(legend.position = c(0.8, 0.5))
 ```
 
 The prior summary function gives me a summary of my prior. As I did not specify one, it provides a weakly informative one consisting of a normal distribution centred at 0.
