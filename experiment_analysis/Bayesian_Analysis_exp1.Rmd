@@ -31,6 +31,15 @@ library(emmeans) # for computing estimated marginal means for Bayesian models
 library(fitdistrplus) # finding shape distribution
 ```
 
+## Saving environment
+
+```{r}
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
+save.image(file = 'myEnvironment.RData')
+
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
+load('myEnvironment.RData')
+```
 ## Load data
 
 ```{r}
