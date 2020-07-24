@@ -46,31 +46,53 @@ magnitudedata <- magnitudedata %>%
 ## Fitting Bayesian regression model
 
 ```{r message = FALSE, warning = FALSE}
-fit.gamma <- stan_glmer(FirstSteeringTime ~ heading + (1 + heading | pNum),
-                        family = Gamma(link = "identity"),
-                        data = magnitudedata)
-summary(fit.gamma)
+fit.gamma.default.prior <- stan_glmer(FirstSteeringTime ~ heading + (1 + heading | pNum),
+                                      family = Gamma(link = "identity"),
+                                      data = magnitudedata)
 
-fit.gamma.glm <- stan_glm(FirstSteeringTime ~ heading,
-                        family = Gamma(link = "identity"),
-                        data = magnitudedata)
+fit.gamma.narrow.cauchy <- stan_glmer(FirstSteeringTime ~ heading + (1 + heading | pNum),
+                                              family = Gamma(link = "identity"),
+                                              prior = cauchy(location = 0, scale = 0.2),
+                                              data = magnitudedata)
 
-summary(fit.gamma.glm)
+fit.gamma.wide.cauchy <- stan_glmer(FirstSteeringTime ~ heading + (1 + heading | pNum),
+                                              family = Gamma(link = "identity"),
+                                              prior = cauchy(location = 0, scale = 1),
+                                              data = magnitudedata)
+
+models <- list(fit.gamma.default.prior, fit.gamma.narrow.cauchy, fit.gamma.wide.cauchy)
 ```
 
-The stan_glmer function allows me to fit a Bayesian multilevel. This is necessary for my data structure as if I fit a standard glm, it assumes that every observation is actually a participant. This will inflate my estimate.
+The stan_glmer function allows me to fit a Bayesian multilevel model. This is necessary for my data structure as if I fit a standard glm, it assumes that every observation is actually a participant. This will inflate my estimate. By incorporating participants as a random effect, I can exploit the repeated measures design and account for variability in my response variable between subjects.
 
-The function also requires a prior. I omitted the option of a prior and defaulted to the weakly informative ones. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors)
+The function also requires a prior. First the first model, I omitted the option of a prior and defaulted to the weakly informative ones. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors). For the second and third model, I have specified a Cauchy distribution. This distribution situates more density over larger potential effect sizes, making it a more conservative prior estimate. I fit models with two different priors - one with a narrow and wide scale to assess the difference in Bayes factor. Rouder et al (2016) proposes that the difference only affects the Bayes factor slightly but it is something that should be considered. 
 
-I set adapt_delta arguement to *0.999* to reduce the stepsize during the model simulation. Stepsize specifies the resolution at which you are simulating through the posterior distribution. If the steps are too large, I might miss something and thus estimates become biased. This is known as divergence. The documentation proposes an adapt_delta arguement value such as this to reduce the chances of divergence (http://mc-stan.org/rstanarm/articles/aov.html)
+Another thing that can be adapted is the adapt_delta arguement within the model. Changing to this to a value of *0.999* for example could reduce the stepsize during the model simulation. Stepsize specifies the resolution at which you are simulating through the posterior distribution. If the steps are too large, I might miss something and thus estimates become biased. This is known as divergence. The documentation proposes an adapt_delta arguement value such as this to reduce the chances of divergence (http://mc-stan.org/rstanarm/articles/aov.html)
 
-Rhat values suggest the model succesfully converged.
+Rhat values of 1 suggest the model successfully converged.
 
 *mean_ppd* in the estimates table can be used as a heuristic for how well the model describes the data. This value represents a best guess of the *mean posterior predicitive distribution* (distribution of simiulated data based on current data). Ideally this should be equal to the mean of my outcome variable (RT). In this case, the values are similar.
 
 ### Investigating prior distributions
 
 ```{r}
+for (i in c(1:length(models))){
+  
+  "select and save temp model"
+  mod.temp <- models[[i]]
+  
+  "save prior distributions"
+  prior.temp <- update(mod.temp, prior_PD = TRUE)
+  
+  "convert priors to dataframe for plotting"
+  prior.temp <- as.data.frame(prior.temp)
+  
+  print(ggplot(data = prior.temp) +
+          geom_density(aes(heading), fill = "red", alpha = 0.1))
+}
+  
+  
+
 prior_summary(fit.gamma)
 
 fit.gamma.prior <- update(fit.gamma, prior_PD = TRUE)
@@ -266,4 +288,12 @@ The *loo_compare* function compares the two Bayesian model fits using the "leave
 Columns within the matrix are computed by generating pairwise comparisons between each model and the model with highest ELPD (i.e. highest predictive accuracy). Because of this, the first row will always be zeros because this is the preferred model compared against itself. 
 
 When the difference (*elpd_diff*) is positive, the expected predictive accuracy is higher for the second model. When it is negative, this favours the model in the first row. Because my *elpd_diff* shows a large negative, model2 (fit_glm) is the preferred model. 
+
+
+
+
+
+
+
+
 
