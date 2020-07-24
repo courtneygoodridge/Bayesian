@@ -116,42 +116,53 @@ wide.cauchy.prior <- as.data.frame(update(fit.gamma.wide.cauchy, prior_PD = TRUE
 
 priors = rbind(default.prior, narrow.cauchy.prior, wide.cauchy.prior)
 
-"distribution for fill"
+"distribution for fill colour"
 ggplot(data = priors, mapping = aes(x = heading, fill = prior)) +
          geom_density(alpha = 0.3) +
-         scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Normal, scale = 2.5", "Cauchy, scale = 1"), values = c("yellow", "red", "blue")) +
+         scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
   ggtitle("Prior distributions for heading") +
   xlim(-10, 10) +
   theme_plot +
   theme(legend.position = c(0.8, 0.5))
 
 "distribution for line colour"
-ggplot() +
-  geom_density(data = default.prior, aes(x = heading, col = "red"), alpha = 0.3) +
-  geom_density(data = narrow.cauchy.prior, aes(x = heading, col = "orange"), alpha = 0.3) +
-  geom_density(data = wide.cauchy.prior, aes(x = heading, col = "blue"), alpha = 0.3) +
-  scale_color_identity(breaks = c("red", "orange", "blue"),
-                          labels = c("Normal, scale = 2.5", "Cauchy, scale = 0.2", "Cauchy, scale = 1"),
-                          guide = "legend") +
+ggplot(data = priors, mapping = aes(x = heading, col = prior)) +
+         geom_density(alpha = 0.3) +
+  scale_colour_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
   ggtitle("Prior distributions for heading") +
   xlim(-10, 10) +
   theme_plot +
   theme(legend.position = c(0.8, 0.5))
+
 ```
 
-The prior summary function gives me a summary of my prior. As I did not specify one, it provides a weakly informative one consisting of a normal distribution centred at 0.
+The prior summary function gives me a summary for each of model priors. The default prior is a normal distribution. As you can see, it is weakly informative and thus situates fairly equal density over a majority of the estimated effect size values. The Cauchy distribution with a scale  of 1 is a bit more informative, and situates a bit more density over values close to one. Finally, the Cauchy distribution with a scale of 0.2 situates most of the density over smaller effect size values (i.e. between -2 and 2).
 
-By updating my model and setting *prior_PD* as TRUE, it saves samples from the prior distribution. Thus *fit.gamma.prior* and *fit.gamma* are the save objects put the first samples from the priors and the latter from the posterior distribution.
+This visualises that no prior may be weakly informative, however if we know that our effect might be small, a Cauchy distribution with a small scale might be our best estimate.
 
-I then save the new model as a dataframe. This gives me access to the prior distributions for the coefficients. I then plot these to highlight the vaguely informative prior distribution. 
-
-This prior situates a lot of density over values around zero, given relatively equal probability of heading having a small positive or negative effect on reaction time. Very little density is situated over the larger effects (above +-2) as these are unlikely in most cognitive science research. 
+To produce these prior distributions,  I update my models whilst setting *prior_PD* as TRUE. This saves samples from the the prior distribution specified in the model. These samples can then be saved as dataframe for plotting.
 
 ## Investigating posterior distributions and ROPE intervals for each contrast
 
 ```{r}
 "extracting posterior draws"
-posteriors <- insight::get_parameters(fit.gamma)
+posteriors.default <- insight::get_parameters(fit.gamma.default.prior) %>%
+  dplyr::mutate(prior = "default")
+
+posteriors.cauchy.wide <- insight::get_parameters(fit.gamma.wide.cauchy) %>%
+  dplyr::mutate(prior = "cauchy_wide")
+  
+posteriors.cauchy.narrow <- insight::get_parameters(fit.gamma.narrow.cauchy) %>%
+  dplyr::mutate(prior = "cauchy_narrow")
+  
+posteriors <- rbind(posteriors.default, posteriors.cauchy.wide, posteriors.cauchy.narrow)
+
+ggplot(data = posteriors, aes(x = heading, col = prior)) +
+  geom_density(alpha = 0.3) +
+  scale_colour_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Normal, scale = 2.5", "Cauchy, scale = 1"), values = c("yellow", "red", "blue")) +
+  xlim(-.20, .20) +
+  theme_plot
+  
 
 "highest density interval"
 hdi.heading <- hdi(posteriors, ci = .89)
