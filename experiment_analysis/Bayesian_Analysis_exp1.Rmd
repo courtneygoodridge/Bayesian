@@ -133,7 +133,6 @@ ggplot(data = priors, mapping = aes(x = heading, col = prior)) +
   xlim(-10, 10) +
   theme_plot +
   theme(legend.position = c(0.8, 0.5))
-
 ```
 
 The prior summary function gives me a summary for each of model priors. The default prior is a normal distribution. As you can see, it is weakly informative and thus situates fairly equal density over a majority of the estimated effect size values. The Cauchy distribution with a scale  of 1 is a bit more informative, and situates a bit more density over values close to one. Finally, the Cauchy distribution with a scale of 0.2 situates most of the density over smaller effect size values (i.e. between -2 and 2).
@@ -157,9 +156,17 @@ posteriors.cauchy.narrow <- insight::get_parameters(fit.gamma.narrow.cauchy) %>%
   
 posteriors <- rbind(posteriors.default, posteriors.cauchy.wide, posteriors.cauchy.narrow)
 
+"posterior distributions as fill colour"
+ggplot(data = posteriors, aes(x = heading, fill = prior)) +
+  geom_density(alpha = 0.3) +
+  scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
+  xlim(-.20, .20) +
+  theme_plot
+
+"posterior distributions as line colour"
 ggplot(data = posteriors, aes(x = heading, col = prior)) +
   geom_density(alpha = 0.3) +
-  scale_colour_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Normal, scale = 2.5", "Cauchy, scale = 1"), values = c("yellow", "red", "blue")) +
+  scale_colour_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
   xlim(-.20, .20) +
   theme_plot
   
