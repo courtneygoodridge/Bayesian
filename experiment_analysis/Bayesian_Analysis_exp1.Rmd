@@ -35,10 +35,10 @@ library(fitdistrplus) # finding shape distribution
 
 ```{r}
 setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
-save.image(file = 'myEnvironment.RData')
+save.image(file = 'BayesModelsEnvExp1.RData')
 
 setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
-load('myEnvironment.RData')
+load('BayesModelsEnvExp1.RData')
 ```
 ## Load data
 
