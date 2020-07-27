@@ -16,6 +16,7 @@ I am using the *rstanarm* package to fit a Bayesian generalised linear models to
 ## Load packages 
 
 ```{r message = FALSE}
+# rm(list = ls()) 
 library(dplyr) # data manipulation
 library(tidyr) # data manipulation
 library(ggplot2) # data vis
@@ -81,7 +82,7 @@ models <- list(fit.gamma.default.prior, fit.gamma.narrow.cauchy, fit.gamma.wide.
 
 The stan_glmer function allows me to fit a Bayesian multilevel model. This is necessary for my data structure as if I fit a standard glm, it assumes that every observation is actually a participant. This will inflate my estimate. By incorporating participants as a random effect, I can exploit the repeated measures design and account for variability in my response variable between subjects.
 
-The function also requires a prior. First the first model, I omitted the option of a prior and defaulted to the weakly informative ones. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors). For the second and third model, I have specified a Cauchy distribution. This distribution situates more density over larger potential effect sizes, making it a more conservative prior estimate. I fit models with two different priors - one with a narrow and wide scale to assess the difference in Bayes factor. Rouder et al (2016) proposes that the difference only affects the Bayes factor slightly but it is something that should be considered. 
+The function also requires a prior. For the first model, I omitted the option of a prior and defaulted to the weakly informative. This is because as the documentation indicates that for many applications, they will work well (https://www.rdocumentation.org/packages/rstanarm/versions/2.19.2/topics/priors). For the second and third model, I have specified a Cauchy distribution. This distribution situates more density over larger potential effect sizes, making it a more conservative prior estimate. I fit models with two different priors - one with a narrow and wide scale to assess the difference in Bayes factor. Rouder et al (2016) proposes that the difference only affects the Bayes factor slightly but it is something that should be considered. 
 
 Another thing that can be adapted is the adapt_delta arguement within the model. Changing to this to a value of *0.999* for example could reduce the stepsize during the model simulation. Stepsize specifies the resolution at which you are simulating through the posterior distribution. If the steps are too large, I might miss something and thus estimates become biased. This is known as divergence. The documentation proposes an adapt_delta arguement value such as this to reduce the chances of divergence (http://mc-stan.org/rstanarm/articles/aov.html)
 
@@ -130,21 +131,14 @@ ggplot(data = priors, mapping = aes(x = heading, fill = prior)) +
          geom_density(alpha = 0.3) +
          scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
   ggtitle("Prior distributions for heading") +
-  xlim(-10, 10) +
-  theme_plot +
-  theme(legend.position = c(0.8, 0.5))
-
-"distribution for line colour"
-ggplot(data = priors, mapping = aes(x = heading, col = prior)) +
-         geom_density(alpha = 0.3) +
-  scale_colour_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
-  ggtitle("Prior distributions for heading") +
-  xlim(-10, 10) +
+  xlim(-15, 15) +
   theme_plot +
   theme(legend.position = c(0.8, 0.5))
 ```
 
-The prior summary function gives me a summary for each of model priors. The default prior is a normal distribution. As you can see, it is weakly informative and thus situates fairly equal density over a majority of the estimated effect size values. The Cauchy distribution with a scale  of 1 is a bit more informative, and situates a bit more density over values close to one. Finally, the Cauchy distribution with a scale of 0.2 situates most of the density over smaller effect size values (i.e. between -2 and 2).
+The prior summary function gives me a summary for each of model priors. The default prior is a normal distribution. As you can see, it is weakly informative and thus situates fairly equal density over a majority of the estimated effect size values. The Cauchy distribution with a scale  of 1 is a bit more informative, and situates a bit more density over values closer to one. Finally, the Cauchy distribution with a scale of 0.2 situates most of the density over smaller effect size values (i.e. between -2 and 2).
+
+Overall, cauchy distributions tend to situate more density over largr effect sizes (versus normal distributions). This means that they are more conservative, as Bayes factors are slightly more like to favour the null model hypothessis (because large effect sizes are slightly less likely). It is for this reason why cauchy distributions are favoured in Bayesian analyses. 
 
 This visualises that no prior may be weakly informative, however if we know that our effect might be small, a Cauchy distribution with a small scale might be our best estimate.
 
@@ -165,39 +159,28 @@ posteriors.cauchy.narrow <- insight::get_parameters(fit.gamma.narrow.cauchy) %>%
   
 posteriors <- rbind(posteriors.default, posteriors.cauchy.wide, posteriors.cauchy.narrow)
 
-"posterior distributions as fill colour"
+"posterior distributions overall"
 ggplot(data = posteriors, aes(x = heading, fill = prior)) +
   geom_density(alpha = 0.3) +
+  geom_vline(aes(xintercept = -0.14)) +
+  geom_vline(aes(xintercept = -0.10)) +
+  geom_vline(data = posteriors %>%
+               dplyr::group_by(prior) %>%
+               dplyr::summarise(MAP = map_estimate(heading)), aes(xintercept = MAP, colour = prior)) +
   scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
+  scale_colour_manual(name = "Maximum A Posteriori", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) + 
   xlim(-.20, .20) +
-  theme_plot
+  theme_plot +
+  theme(legend.position = c(0.5, 0.5))
 
-"posterior distributions as line colour"
-ggplot(data = posteriors, aes(x = heading, col = prior)) +
-  geom_density(alpha = 0.3) +
-  scale_colour_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
-  xlim(-.20, .20) +
-  theme_plot
-  
+"hdis for each prior"
+hdi.default <- hdi(posteriors.default, ci = .89)
+hdi.cauchy.narrow <- hdi(posteriors.cauchy.narrow, ci = .89)
+hdi.cauchy.wide <- hdi(posteriors.cauchy.wide, ci = .89)
 
-"highest density interval"
-hdi.heading <- hdi(posteriors, ci = .89)
-hdi.heading <- hdi.heading %>%
-  dplyr::filter(Parameter == "heading")
-
-"visualising posterior"
-ggplot(data = posteriors) +
-  geom_density(data = priors, aes(x = heading), fill = "black", alpha = 0.1) +
-  geom_vline(xintercept = median(posteriors$heading), color = "red") +
-  geom_vline(xintercept = map_estimate(posteriors$heading), color = "yellow") +
-  geom_vline(xintercept = mean(posteriors$heading), color = "orange") +
-  geom_density(aes(x = heading), fill = "red", alpha = 0.3) +
-  geom_vline(xintercept = -.04, color = "black", size = 2) +
-  geom_vline(xintercept = 0, color = "black", size = 2) +
-  geom_vline(xintercept = hdi.heading$CI_low, color = "black") +
-  geom_vline(xintercept = hdi.heading$CI_high, color = "black") +
-  xlim(-.15, .15) +
-  xlab("standardised coefficient effect")
+hdi.default
+hdi.cauchy.narrow
+hdi.cauchy.wide
 
 "establishing the percentage of the HDIs within the ROPE interval"
 percentage_in_rope_glm <- rope(fit.gamma, ci = 1, range = c(-0.04, 0))
@@ -210,9 +193,9 @@ median(posteriors$heading)
 
 The following is generated from the example given here (https://easystats.github.io/bayestestR/articles/example1.html), here (https://easystats.github.io/bayestestR/articles/credible_interval.html) and here (https://easystats.github.io/bayestestR/articles/bayestestR.html).
 
-Here we visualise the posterior distribution from our model alongside the prior distribution. The vertical lines indicate the mean, median and Maximum A Posteriori (peak of the posterior) values from the posterior distribution. These represent the most likely values of the true effect size parameter. 
+Here we visualise the posterior distribution from our models alongside the prior distribution. The posteriors from each prior are very similar. The vertical line represents the Maximum A Posteriori (peak of the posterior) for each of the posterior distributions. These are also very similar, and represent the most probable value of the coefficient for the heading variable. 
 
-I then compute the 89% HDI. 89% is arbitrary but was proposed by McElreath (2014, 2018) as being the most stable value. This is then plotted on the posterior distribution. The posterior alongside the HDI provide a nice interpretation for the overall effect. Rather than proposing a point estimate as you might in frequentist statistics (i.e. the correlation is r = 0.12) under this Bayesian framework, we can propose "the most probable value for our effect based upon our data is -0.11, however effects ranging from -0.1364861 to -0.09982279 are also compatible with the data".
+Computing the 89% HDIs reveals that these are also the same for of the posterior distributions regardless of the prior. 89% is arbitrary but was proposed by McElreath (2014, 2018) as being the most stable value. This is then plotted on the posterior distribution. The posterior alongside the HDI provide a nice interpretation for the overall effect. Rather than proposing a point estimate as you might in frequentist statistics (i.e. the correlation is r = 0.12) under this Bayesian framework, we can propose "the most probable value for our effect based upon our data is -0.11, however effects ranging from -0.14 to -0.10 are also compatible with the data".
 
 The Bayesian method does not rely on statistical significance in order to understand whether an effect is interesting - instead, the posterior distribution generates a probabilistic view of certain parameters and their uncertainty i.e. the coefficient for heading. Rather than conclude that there is simply a difference from a point null (0), one method used in Bayesian analyses is to construct a ROPE. 
 
@@ -261,18 +244,26 @@ My model demonstrates a reasonably good fit and predicts the peak location well.
 ## Computing a Bayes factor
 
 ```{r message = FALSE, warning = FALSE}
+"computing Bayes factor against point null"
 bf.null <- bayesfactor_parameters(fit.gamma, null = 0)
 bf.null
 
-bf.rope <- bayesfactor_parameters(fit.gamma, null = c(-0.04, 0))
-bf.rope
+"computing Bayes factor against ROPE interval"
+bf.rope.narrow.cauchy <- bayesfactor_parameters(fit.gamma.narrow.cauchy, null = c(-0.04, 0))
+bf.rope.narrow.cauchy
+
+bf.rope.wide.cauchy <- bayesfactor_parameters(fit.gamma.wide.cauchy, null = c(-0.04, 0))
+bf.rope.wide.cauchy
+
+bf.rope.default <- bayesfactor_parameters(fit.gamma.default.prior, null = c(-0.04, 0))
+bf.rope.default
 ```
 
 This is based upon the example given here (https://easystats.github.io/bayestestR/articles/bayes_factors.html#testing-models-parameters-with-bayes-factors)
 
-I can compute my Bayes factor for my heading coefficient. Firstly against the point null. This provides extremely large Bayes factors as evidence against a point null is very likely.
+I can compute my Bayes factor for my heading coefficient for models with different priors. Firstly against the point null. This provides extremely large Bayes factors as evidence against a point null is very likely.
 
-After this, I compute a Bayes factor against the ROPE value I used to investigate my posterior distribution. The Bayes factor is still very large, suggesting my effect is substantial. 
+After this, I compute a Bayes factor against the ROPE value I used to investigate my posterior distribution. The Bayes factor is still very large, suggesting my effect is substantial. Bayes factors are larger for the model with a prior specified as a narrow cauchy distribution, followed by a wide cauchy distribution, and then a normal distribution. 
 
 ## Support intervals
 
