@@ -210,7 +210,9 @@ Hence when comparing the ROPE to the 89% HDIs, it provides a very intuitive inte
 ## Probability of Direction
 
 ```{r}
-p_direction(posteriors)
+p_direction(posteriors.default)
+p_direction(posteriors.cauchy.narrow)
+p_direction(posteriors.cauchy.wide)
 ```
 
 The *Probability of Direction* is a value that ranges from 50% to 100%. It is interpreted as the probability that a parameter is positive or negative. Mathematically it is defined as the percentage of the posterior distribution that is the same sign as the median. The *Probability of Direction* is independent of the model and computed from posterior draws. 
@@ -229,7 +231,7 @@ For more information see:
 y <- magnitudedata$FirstSteeringTime
 
 "sample draws from the posterior distribution"
-y.draws <- posterior_predict(fit.gamma, draws = 50)
+y.draws <- posterior_predict(fit.gamma.narrow.cauchy, draws = 50)
 
 color_scheme_set("brightblue")
 ppc_dens_overlay(y, y.draws[1:50, ])
@@ -263,28 +265,37 @@ This is based upon the example given here (https://easystats.github.io/bayestest
 
 I can compute my Bayes factor for my heading coefficient for models with different priors. Firstly against the point null. This provides extremely large Bayes factors as evidence against a point null is very likely.
 
-After this, I compute a Bayes factor against the ROPE value I used to investigate my posterior distribution. The Bayes factor is still very large, suggesting my effect is substantial. Bayes factors are larger for the model with a prior specified as a narrow cauchy distribution, followed by a wide cauchy distribution, and then a normal distribution. 
+After this, I compute a Bayes factor against the ROPE value I used to investigate my posterior distribution. The Bayes factor is still very large, suggesting my effect is substantial. Bayes factors are larger for the model with a prior specified as a narrow cauchy distribution, followed by a wide cauchy distribution, and then a normal distribution. This is because the cauchy priors are more conservative. Hence the shift of evidence if greater from prior to posterior resulting in a higher Bayes factor. 
 
 ## Support intervals
 
 ```{r}
-my_si <- si(fit.gamma, BF = 30)
-my_si
+"computing support intervals for models with each prior"
+my_si.default <- si(fit.gamma.default.prior, BF = 10)
+my_si.cauchy.narrow <- si(fit.gamma.narrow.cauchy, BF = 10)
+my_si.cauchy.wide <- si(fit.gamma.wide.cauchy, BF = 10)
 
-ggplot(data = posteriors) +
-  geom_vline(xintercept = median(posteriors$heading), color = "red") +
-  geom_density(aes(x = heading), fill = "red", alpha = 0.3) +
-  geom_vline(xintercept = -.04, color = "black", size = 2) +
-  geom_vline(xintercept = 0, color = "black", size = 2) +
-  geom_vline(xintercept = -.12, color = "gray", size = 2) +
-  geom_vline(xintercept = -.10, color = "gray", size = 2) +
-  xlim(-.15, 0) +
-  xlab("standardised coefficient effect")
+my_si.default
+my_si.cauchy.narrow
+my_si.cauchy.wide
+
+ggplot(data = posteriors, aes(x = heading, fill = prior)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(aes(xintercept = -0.15)) +
+  geom_vline(aes(xintercept = -0.09)) +
+  geom_vline(data = posteriors %>%
+               dplyr::group_by(prior) %>%
+               dplyr::summarise(MAP = map_estimate(heading)), aes(xintercept = MAP, colour = prior)) +
+  scale_fill_manual(name = "Prior", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
+  scale_colour_manual(name = "Maximum A Posteriori", labels = c("Cauchy, scale = 0.2", "Cauchy, scale = 1", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) + 
+  xlim(-.20, .20) +
+  theme_plot +
+  theme(legend.position = c(0.5, 0.5))
 ```
 
 Uninformative prior distributions assign uniform credibility to values of my effect size (i.e. coefficients). As data comes in, values of my effect size receive more or less credibility. This is represented via the posterior distribution. The reallocation of this credibility is represented by the updating (Bayes) factor. Hence the Bayes factor represents the increase/decrease in credibility of values of theta based upon evidence (data).
 
-The support interval is a defined range of theta values that receive a certain level of support from the data. 
+The support interval is a defined range of theta values that receive a certain level of support from the data. Regardless of prior, the support intervals are the same and suggest that a majority of values within the posterior distributions would generate a Bayes factor of at least 10 for evidence of an affect that heading has on reaction time. 
 
 They are analogous to frequentist confidence intervals. 95% confidence intervals encompass the true population parameter 95% of the time. Support intervals encompass values of the coefficient that receive a certain amount of evidence given the data (in this example, the support intervals highlight the coefficient values that are associated with substantial support from the data).
 
@@ -298,29 +309,6 @@ Within Bayesian statistics, there exists a conceptual difference between the Bay
 Because of this there can be a paradoxical situation whereby the Bayes factor supports a point null hypothesis model versus the alternative but simultaneously the credible interval excludes a theta value of 0 i.e. no effect.
 
 In an attempt to solve this problem, support intervals quantify which values of theta (i.e. coefficient) are supported by the data. This is generated by computing a range of values that predicted the data well. How well depends on what you specify the level of evidence you want (i.e. via the Bayes factor). 
-
-## Restriction Bayesian model
-
-```{r}
-contrasts(magnitudedata$heading) <- "contr.bayes"
-
-fit_bayes <- stan_glm(FirstSteeringTime ~ heading,
-                      family = Gamma(link ="identity"),
-                      adapt_delta = 0.999,
-                      data = magnitudedata)
-
-em_bayes <- emmeans(fit_bayes, ~ heading)
-fit_bayes_prior <- update(fit_bayes, prior_PD = TRUE)
-em_bayes_prior <- emmeans(fit_bayes_prior, ~ heading)
-
-hyp <- c("`2` < `1.5` & `1.5` < `1` & `1` < `0.5`")
-
-bayesfactor_restricted(posterior = em_bayes,
-                       prior = em_bayes_prior,
-                       hypothesis = hyp)
-```
-
-Thus far I have computed Bayes factors for each of my contrasts. However I can be more specific as I know the direct of my effect (increased heading leads to a decrease in RTs). Thus I can implement a restriction model and calculate a Bayes factor versus an unrestricted model i.e. just differences between my heading levels. The details of this code chunk can be found in the *Bayesian_restriction.Rmd* markdown file.
 
 ## Bayesian GLM model with lognormal family and model comparison
 
@@ -336,7 +324,7 @@ loo_log <- loo(fit_glm_log)
 
 print(loo_compare(loo_log, loo_glm), digits = 3)
 ```
-The *loo_compare* function compares the two Bayesian model fits using the "leave one out" cross validaion method. This method investigates the differences in predictive errors and standard errors for each model. This is encapsulated by the *elpd_diff* (difference in predictive errors) and *se_diff* (difference in standard errors) variables.
+The *loo_compare* function compares the two Bayesian model fits using the "leave one out" cross validation method. This method investigates the differences in predictive errors and standard errors for each model. This is encapsulated by the *elpd_diff* (difference in predictive errors) and *se_diff* (difference in standard errors) variables.
 
 Columns within the matrix are computed by generating pairwise comparisons between each model and the model with highest ELPD (i.e. highest predictive accuracy). Because of this, the first row will always be zeros because this is the preferred model compared against itself. 
 
