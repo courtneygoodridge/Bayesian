@@ -31,7 +31,161 @@ library(fitdistrplus) # finding shape distribution
 ## Load data 
 
 ```{r}
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/experiment_occlusion/Data cleaning and modelling/Finished_code")
+magnitudedata <- read.csv("magnitudedata.csv")
 
+magnitudedata <- magnitudedata %>%
+  dplyr::filter(EarlyResponses == FALSE)
+```
 
+## Saving environment
 
+```{r}
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
+save.image(file = 'BayesModelsEnvExp2.RData')
+
+setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
+load('BayesModelsEnvExp2.RData')
+```
+
+## Generating mean and standard deviation of experiment 1 posteriors for experiment 2 priors 
+
+```{r}
+mean(posteriors.inverse.gaussian$heading)
+sd(posteriors.inverse.gaussian$heading)
+
+fit.gamma.exp1.prior <- stan_glmer(FirstSteeringTime ~ heading * startingpos + (1 + heading | pNum),
+                                   family = Gamma(link = "identity"),
+                                   prior = normal(location = -0.11, scale = 0.01),
+                                   data = magnitudedata)
+
+fit.gamma.exp2.default <- stan_glmer(FirstSteeringTime ~ heading * startingpos + (1 + heading | pNum),
+                                   family = Gamma(link = "identity"),
+                                   data = magnitudedata)
+
+fit.gamma.exp2.narrow.cauchy <- stan_glmer(FirstSteeringTime ~ heading * startingpos + (1 + heading | pNum),
+                                           family = Gamma(link = "identity"),
+                                           prior = cauchy(location = 0, scale = 0.2),
+                                           data = magnitudedata)
+
+summary(fit.gamma.exp1.prior)
+summary(fit.gamma.exp2.default)
+summary(fit.gamma.exp2.narrow.cauchy)
+```
+
+Here I fit 3 models with 3 different priors. The first prior is based upon the posterior from experiment 1. I take the mean and standard deviation from the posterior and use these as the location and scale for the prior that is the posterior of experiment 1. To compare the difference in Bayers factor, I also fit a model with uniform default priors and a narrow cauchy prior. 
+
+All 3 models were fitted without convergence problems.
+
+## Visualing the different priors
+
+```{r}
+"prior summary"
+prior_summary(fit.gamma.exp1.prior)
+prior_summary(fit.gamma.exp2.default)
+prior_summary(fit.gamma.exp2.narrow.cauchy)
+
+"Saving priors as dataframes"
+exp1.prior <- as.data.frame(update(fit.gamma.exp1.prior, prior_PD = TRUE)) %>%
+  dplyr::mutate(prior = "exp_1_posterior")
+  
+exp2.default.prior <- as.data.frame(update(fit.gamma.exp2.default, prior_PD = TRUE)) %>%
+  dplyr::mutate(prior = "exp_2_default")
+
+exp2.narrow.cauchy <- as.data.frame(update(fit.gamma.exp2.narrow.cauchy, prior_PD = TRUE)) %>%
+  dplyr::mutate(prior = "exp_2_narrow")
+
+exp2.priors = rbind(exp1.prior, exp2.default.prior, exp2.narrow.cauchy)
+
+ggplot(data = exp2.narrow.cauchy, mapping = aes(x = heading)) +
+  geom_density() +
+  xlim(-15, 15)
+
+"visualising priors for heading coefficient"
+ggplot(data = exp2.priors, mapping = aes(x = heading, fill = prior)) +
+         geom_density(alpha = 0.3) +
+         scale_fill_manual(name = "Prior", labels = c("Experiment 1 posterior", "Normal, scale = 2.5", "Cauchy, scale = 0.2"), values = c("yellow", "red", "blue")) +
+  ggtitle("Prior distributions for heading") +
+  xlim(-0.5, 0.5) +
+  theme_plot +
+  theme(legend.position = c(0.7, 0.5))
+
+"visualising priors for starting position coefficient"
+ggplot(data = exp2.priors, mapping = aes(x = startingpos, fill = prior)) +
+         geom_density(alpha = 0.3) +
+         scale_fill_manual(name = "Prior", labels = c("Experiment 1 posterior", "Normal, scale = 2.5", "Cauchy, scale = 0.2"), values = c("yellow", "red", "blue")) +
+  ggtitle("Prior distributions for starting position") +
+  xlim(-0.25, 0.25) +
+  theme_plot +
+  theme(legend.position = c(0.7, 0.5))
+```
+
+## Visualing posteriors
+
+```{r}
+"extracting posterior draws"
+exp1.prior.posteriors <- insight::get_parameters(fit.gamma.exp1.prior) %>%
+  dplyr::mutate(prior = "exp_1_posterior")
+
+exp2.default.posteriors <- insight::get_parameters(fit.gamma.exp2.default) %>%
+  dplyr::mutate(prior = "exp_2_default")
+
+exp2.cauchy.narrow.posteriors <- insight::get_parameters(fit.gamma.exp2.narrow.cauchy) %>%
+  dplyr::mutate(prior = "exp_2_narrow")
+  
+exp2.posteriors <- rbind(exp1.prior.posteriors, exp2.default.posteriors, exp2.cauchy.narrow.posteriors)
+
+"visualing posteriors for heading main effect"
+ggplot(data = exp2.posteriors, aes(x = heading, fill = prior)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(aes(xintercept = 0), size = 2) +
+  geom_vline(data = exp2.posteriors %>%
+               dplyr::group_by(prior) %>%
+               dplyr::summarise(MAP = map_estimate(heading)), aes(xintercept = MAP, colour = prior)) +
+  scale_fill_manual(name = "Prior", labels = c("Experiment 1 posterior", "Cauchy, scale = 0.2", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
+  scale_colour_manual(name = "Maximum A Posteriori", labels = c("Experiment 1 posterior", "Cauchy, scale = 0.2", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) + 
+  xlim(-.15, .15) +
+  theme_plot +
+  theme(legend.position = c(0.7, 0.5))
+
+"visualisng posteriors for starting position main effect"
+ggplot(data = exp2.posteriors, aes(x = startingpos, fill = prior)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(aes(xintercept = 0), size = 2) +
+  geom_vline(data = exp2.posteriors %>%
+               dplyr::group_by(prior) %>%
+               dplyr::summarise(MAP = map_estimate(startingpos)), aes(xintercept = MAP, colour = prior)) +
+  scale_fill_manual(name = "Prior", labels = c("Experiment 1 posterior", "Cauchy, scale = 0.2", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
+  scale_colour_manual(name = "Maximum A Posteriori", labels = c("Experiment 1 posterior", "Cauchy, scale = 0.2", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) + 
+  xlim(-.05, .05) +
+  theme_plot +
+  theme(legend.position = c(0.8, 0.5))
+
+"visualising posteriors for heading x starting position interaction"
+ggplot(data = exp2.posteriors, aes(x = `heading:startingpos`, fill = prior)) +
+  geom_density(alpha = 0.3) +
+  geom_vline(aes(xintercept = 0), size = 2) +
+  geom_vline(data = exp2.posteriors %>%
+               dplyr::group_by(prior) %>%
+               dplyr::summarise(MAP = map_estimate(`heading:startingpos`)), aes(xintercept = MAP, colour = prior)) +
+  scale_fill_manual(name = "Prior", labels = c("Experiment 1 posterior", "Cauchy, scale = 0.2", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) +
+  scale_colour_manual(name = "Maximum A Posteriori", labels = c("Experiment 1 posterior", "Cauchy, scale = 0.2", "Normal, scale = 2.5"), values = c("yellow", "red", "blue")) + 
+  xlim(-.05, .05) +
+  theme_plot +
+  theme(legend.position = c(0.25, 0.5))
+```
+
+The current ROPE is based upon a standardized effect size coefficient. However my coefficients are not standardised,thus interpreting them in relation to the posterior distribution may not be wise. I may need to standardised my coefficients in order for the ROPE to be useful. 
+
+## Investigating Bayes factor for each coefficient
+
+```{r}
+"computing Bayes factor against point null"
+bf.null.exp1.prior <- bayesfactor_parameters(fit.gamma.exp1.prior, null = 0)
+bf.null.exp2.default <- bayesfactor_parameters(fit.gamma.exp2.default, null = 0)
+bf.null.exp2.narrow.cauchy <- bayesfactor_parameters(fit.gamma.exp2.narrow.cauchy, null = 0)
+
+bf.null.exp1.prior
+bf.null.exp2.default
+bf.null.exp2.narrow.cauchy
 ```
