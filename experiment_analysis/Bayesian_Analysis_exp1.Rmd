@@ -41,6 +41,7 @@ save.image(file = 'BayesModelsEnvExp1.RData')
 setwd("C:/Users/pscmgo/OneDrive for Business/PhD/Project/Experiment_Code/Bayesian")
 load('BayesModelsEnvExp1.RData')
 ```
+
 ## Load data
 
 ```{r}
